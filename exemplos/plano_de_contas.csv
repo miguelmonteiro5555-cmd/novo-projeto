@@ -1,0 +1,27 @@
+codigo;descricao;natureza
+1;ATIVO;D
+1.1;Ativo Circulante;D
+1.1.01;Caixa;D
+1.1.02;Banco Conta Movimento;D
+1.1.03;Clientes;D
+1.1.04;Estoque de Mercadorias;D
+1.2;Ativo Não Circulante;D
+1.2.01;Móveis e Utensílios;D
+2;PASSIVO E PATRIMÔNIO LÍQUIDO;C
+2.1;Passivo Circulante;C
+2.1.01;Fornecedores;C
+2.1.02;Salários a Pagar;C
+2.1.03;Impostos a Recolher;C
+2.3;Patrimônio Líquido;C
+2.3.01;Capital Social;C
+3;RECEITAS;C
+3.1;Receita Bruta;C
+3.1.01;Receita de Vendas;C
+4;CUSTOS E DESPESAS;D
+4.1;Custos;D
+4.1.01;Custo das Mercadorias Vendidas;D
+4.2;Despesas Operacionais;D
+4.2.01;Salários;D
+4.2.02;Aluguel;D
+4.2.03;Energia Elétrica;D
+4.2.04;Impostos sobre Vendas;D
