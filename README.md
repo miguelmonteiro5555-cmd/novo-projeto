@@ -21,6 +21,38 @@ computador, sem enviar dados a servidores. Ela está publicada em
 https://claude.ai/artifact/U6mcKfqdfjEAHz3K5tN9eD. O link é privado até ser
 compartilhado pelo menu Compartilhar.
 
+## Base de cálculo mensal (modelo FEMTA)
+
+Gera a planilha de base de cálculo do fundo, com uma aba por mês (jan a dez) e
+o **Resumo Anual**, no mesmo layout do modelo do FEMTA:
+
+- **Quadro 1 · Receita**: prevista, atualizada, realizada, percentuais e acumulado;
+- **Quadro 2 · Despesa**: dotação inicial, autorizada, execução, suplementações, anulações e acumulado;
+- **Quadro 3 · Balanço financeiro**: ingressos e dispêndios;
+- **RFP** = (RO + RE) − (DO + DE) e a diferença entre os quadros 1 e 2;
+- **Conferências**: ingressos = dispêndios e dotação autorizada = inicial + suplementações − anulações.
+
+Diferenças em relação ao modelo original:
+
+- O saldo inicial do balanço financeiro de fevereiro a dezembro é o **saldo final
+  do mês anterior** (no original era sempre o saldo de abertura do ano, e por
+  isso ingressos e dispêndios só fechavam em janeiro).
+- O total acumulado da dotação autorizada é `D18 + D19` em todos os meses: a
+  dotação autorizada já inclui suplementações e anulações.
+- A despesa orçamentária é `E18 − E22` em todos os meses (janeiro usava só `E18`).
+
+```bash
+# Regenerar a partir de uma base existente (copia os valores digitados)
+python -m balancete.base_calculo --de BASE.xlsx --entidade "Fundo Municipal de Mobilidade e Transporte – FEMTA" --saida nova.xlsx
+
+# Modelo em branco para um novo exercício
+python -m balancete.base_calculo --ano 2026 --entidade "..." --saida modelo_2026.xlsx
+```
+
+A versão para o navegador fica em [`web/base_calculo.html`](web/base_calculo.html):
+os valores são digitados mês a mês, as conferências aparecem na hora, a
+planilha existente pode ser importada e a planilha Excel é baixada no mesmo modelo.
+
 ## Aplicação web (Flask, local)
 
 ```bash
@@ -130,6 +162,7 @@ balancete/
   calculo.py     cálculo do balancete e totalização das contas sintéticas
   exportacao.py  geração do Excel e do CSV
   formato.py     formatação de valores (1.234,56)
+  base_calculo.py  base de cálculo mensal (modelo FEMTA)
   cli.py         linha de comando
   app.py         aplicação web (Flask)
   templates/     páginas da aplicação web

@@ -1,0 +1,826 @@
+<title>Base de Cálculo FEMTA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600&display=swap">
+<style>
+  /* Layout: caderno de fechamento — abas dos meses no topo, quadros do mês em grade, resumo anual em tabela */
+  :root {
+    --papel: #f5f6f3;
+    --folha: #ffffff;
+    --tinta: #1c2520;
+    --suave: #5c6a63;
+    --linha: #d8ded9;
+    --campo: #fbfcf8;
+    --verde: #1d5c4a;
+    --verde-claro: #e2eee8;
+    --cabeca: #e7ebe8;
+    --total: #eef2ef;
+    --ok: #23703f;
+    --ok-fundo: #e5f3e9;
+    --erro: #b3261e;
+    --erro-fundo: #fbeaea;
+    --aviso: #8a5a00;
+    --aviso-fundo: #fff4dc;
+    --foco: #2f7d64;
+    --f-titulo: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --f-texto: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --papel: #121815; --folha: #19211d; --tinta: #e4ebe6; --suave: #9aaba2; --linha: #2e3a34; --campo: #141b17;
+      --verde: #7cc7a8; --verde-claro: #1f3a30; --cabeca: #222d27; --total: #1e2823;
+      --ok: #7fd49a; --ok-fundo: #173323; --erro: #f2a19b; --erro-fundo: #3a1b19;
+      --aviso: #f0c46a; --aviso-fundo: #352a12; --foco: #7cc7a8;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --papel: #121815; --folha: #19211d; --tinta: #e4ebe6; --suave: #9aaba2; --linha: #2e3a34; --campo: #141b17;
+    --verde: #7cc7a8; --verde-claro: #1f3a30; --cabeca: #222d27; --total: #1e2823;
+    --ok: #7fd49a; --ok-fundo: #173323; --erro: #f2a19b; --erro-fundo: #3a1b19;
+    --aviso: #f0c46a; --aviso-fundo: #352a12; --foco: #7cc7a8;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { background: var(--papel); color: var(--tinta); font-family: var(--f-texto); font-size: 15px; line-height: 1.5; }
+  .pagina {
+    max-width: 1320px; margin: 0 auto; padding-block: 28px 56px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid; gap: 18px;
+  }
+  .rotulo { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--suave); font-weight: 500; }
+  h1 { font-family: var(--f-titulo); font-weight: 600; font-size: clamp(24px, 3.6vw, 32px); line-height: 1.15; margin: 2px 0 0; text-wrap: balance; }
+  h2 { font-family: var(--f-titulo); font-weight: 600; font-size: 21px; margin: 0; text-wrap: balance; }
+  h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--suave); margin: 0 0 8px; font-weight: 600; }
+  .topo { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: end; }
+  .topo > div { min-width: 0; }
+  .identificacao { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+  .campo-topo { display: grid; gap: 4px; }
+  .campo-topo label { font-size: 13px; font-weight: 600; }
+  .campo-topo input { font: inherit; color: var(--tinta); background: var(--folha); border: 1px solid var(--linha); border-radius: 6px; padding: 7px 10px; }
+  #entidade { width: min(460px, 100%); }
+  #ano { width: 90px; }
+  .barra { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  button {
+    font: inherit; font-weight: 600; font-size: 14px; border-radius: 6px; padding: 8px 14px; cursor: pointer;
+    border: 1px solid var(--verde); background: var(--verde); color: var(--folha);
+  }
+  button.secundario { background: transparent; color: var(--verde); }
+  button.perigo { background: var(--erro); border-color: var(--erro); color: var(--folha); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; }
+  .arquivo-botao { position: relative; display: inline-flex; }
+  .arquivo-botao input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+  .arquivo-botao span {
+    font-weight: 600; font-size: 14px; border-radius: 6px; padding: 8px 14px; border: 1px solid var(--verde); color: var(--verde);
+  }
+  .arquivo-botao:focus-within span { outline: 2px solid var(--foco); outline-offset: 2px; }
+  .nota { font-size: 13px; color: var(--suave); margin: 0; }
+  .confirmacao { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--erro-fundo); color: var(--erro); padding: 8px 12px; border-radius: 6px; font-size: 14px; }
+
+  .abas { display: flex; gap: 4px; overflow-x: auto; border-bottom: 2px solid var(--linha); padding-bottom: 0; }
+  .aba {
+    background: transparent; color: var(--suave); border: 0; border-bottom: 3px solid transparent; border-radius: 0;
+    padding: 8px 12px 7px; font-weight: 600; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; margin-bottom: -2px;
+  }
+  .aba[aria-selected="true"] { color: var(--tinta); border-bottom-color: var(--verde); }
+  .ponto { width: 8px; height: 8px; border-radius: 50%; background: var(--linha); flex: none; }
+  .ponto.ok { background: var(--ok); }
+  .ponto.verificar { background: var(--erro); }
+
+  .mensagem { border-radius: 8px; padding: 10px 14px; font-size: 14px; }
+  .mensagem.erro { background: var(--erro-fundo); color: var(--erro); }
+  .mensagem.info { background: var(--verde-claro); }
+
+  .mes-topo { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+  .pill.ok { background: var(--ok-fundo); color: var(--ok); }
+  .pill.verificar { background: var(--erro-fundo); color: var(--erro); }
+  .pill.vazio { background: var(--cabeca); color: var(--suave); }
+
+  .quadros { display: grid; gap: 18px; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: start; }
+  .coluna { display: grid; gap: 18px; min-width: 0; }
+  @media (max-width: 1100px) { .quadros { grid-template-columns: minmax(0, 1fr); } }
+  .quadro { background: var(--folha); border: 1px solid var(--linha); border-radius: 8px; padding: 14px; min-width: 0; }
+  .rolagem { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th { background: var(--cabeca); text-align: center; font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; padding: 7px 8px; font-weight: 600; color: var(--tinta); }
+  th:first-child, td:first-child { text-align: left; }
+  td { border-top: 1px solid var(--linha); padding: 3px 6px; white-space: nowrap; }
+  td:first-child { white-space: normal; min-width: 140px; padding-left: 8px; }
+  .financeiro { display: grid; gap: 14px; }
+  td.n { text-align: right; font-family: var(--f-num); font-variant-numeric: tabular-nums; padding-right: 8px; }
+  td.p { text-align: right; font-family: var(--f-num); font-variant-numeric: tabular-nums; color: var(--suave); padding-right: 8px; }
+  tr.total td { background: var(--total); font-weight: 600; }
+  td.negativo { color: var(--erro); }
+  input.valor {
+    width: 100%; min-width: 124px; text-align: right; font-family: var(--f-num); font-size: 13.5px; font-variant-numeric: tabular-nums;
+    background: var(--campo); color: var(--tinta); border: 1px solid transparent; border-radius: 4px; padding: 4px 6px;
+  }
+  input.valor:hover { border-color: var(--linha); }
+  input.valor:focus { border-color: var(--verde); background: var(--folha); }
+  input.valor.invalido { border-color: var(--erro); }
+  .legenda { font-size: 12.5px; color: var(--suave); margin: 8px 0 0; }
+  .indicadores { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .indicador { border: 1px solid var(--linha); border-radius: 6px; padding: 8px 12px; display: grid; gap: 2px; min-width: 0; }
+  .indicador span { font-size: 12px; color: var(--suave); }
+  .indicador strong { font-family: var(--f-num); font-weight: 500; font-size: 15.5px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .conferencias { display: grid; gap: 8px; }
+  .conferencia { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; font-size: 14px; border-top: 1px solid var(--linha); padding-top: 8px; }
+  .conferencia:first-child { border-top: 0; padding-top: 0; }
+  .conferencia strong { font-family: var(--f-num); font-weight: 500; white-space: nowrap; }
+  .dica { font-size: 13px; color: var(--aviso); background: var(--aviso-fundo); border-radius: 6px; padding: 6px 10px; }
+  .resumo td.n, .resumo th { white-space: nowrap; }
+  @media (prefers-reduced-motion: no-preference) { button { transition: filter .15s; } button:hover:not(:disabled) { filter: brightness(1.08); } }
+</style>
+
+<div class="pagina">
+  <header class="topo">
+    <div>
+      <span class="rotulo">Base de cálculo · Balancetes mensais</span>
+      <h1 id="titulo">Base de Cálculo</h1>
+    </div>
+    <div class="identificacao">
+      <div class="campo-topo">
+        <label for="entidade">Entidade</label>
+        <input type="text" id="entidade" value="Fundo Municipal de Mobilidade e Transporte – FEMTA">
+      </div>
+      <div class="campo-topo">
+        <label for="ano">Exercício</label>
+        <input type="number" id="ano" min="2000" max="2100" value="2025">
+      </div>
+    </div>
+  </header>
+
+  <div class="barra">
+    <button type="button" id="baixar">Baixar planilha Excel</button>
+    <label class="arquivo-botao" for="importar"><input type="file" id="importar" accept=".xlsx,.xlsm"><span>Importar planilha</span></label>
+    <button type="button" class="secundario" id="novo">Começar exercício novo</button>
+    <span id="confirmar-novo" class="confirmacao" hidden>
+      Apagar todos os valores digitados?
+      <button type="button" class="perigo" id="confirmar-sim">Apagar</button>
+      <button type="button" class="secundario" id="confirmar-nao">Cancelar</button>
+    </span>
+  </div>
+  <p class="nota" id="nota-salvo">As alterações ficam guardadas neste navegador. Baixe a planilha para ter o arquivo definitivo.</p>
+  <div id="mensagem"></div>
+
+  <nav class="abas" role="tablist" id="abas"></nav>
+  <main id="conteudo"></main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script>
+"use strict";
+
+const DADOS_INICIAIS = /*DADOS*/null/*FIM*/;
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const NOMES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+const CAMPOS = {
+  receita_prevista: "C5", receita_atualizada: "D5", receita_realizada: "E5",
+  superavit_previsto: "C7", superavit_atualizado: "D7", superavit_realizado: "E7",
+  excesso_previsto: "C8", excesso_atualizado: "D8", excesso_realizado: "E8",
+  saldo_mes_ant_previsto: "C9", saldo_mes_ant_atualizado: "D9", saldo_mes_ant_realizado: "E9",
+  correntes_inicial: "C16", correntes_autorizada: "D16", correntes_execucao: "E16",
+  capital_inicial: "C17", capital_autorizada: "D17", capital_execucao: "E17",
+  reserva_inicial: "C19", reserva_autorizada: "D19", reserva_execucao: "E19",
+  suplementacao_inicial: "C20", suplementacao_autorizada: "D20", suplementacao_execucao: "E20",
+  especial_inicial: "C21", especial_autorizada: "D21", especial_execucao: "E21",
+  anulacoes_inicial: "C22", anulacoes_autorizada: "D22", anulacoes_execucao: "E22",
+  transf_recebida_orcamentaria: "K6", receita_extraorcamentaria: "K7",
+  transf_recebida_extraorcamentaria: "K8", saldo_exercicio_anterior: "K9",
+  transf_concedida_orcamentaria: "M6", despesa_extraorcamentaria: "M7",
+  transf_concedida_extraorcamentaria: "M8", saldo_final: "M9",
+};
+// Campos que costumam se repetir de um mês para o outro (previsões e dotações).
+const REPETIDOS = ["receita_prevista", "receita_atualizada", "correntes_inicial", "correntes_autorizada",
+  "capital_inicial", "capital_autorizada", "reserva_inicial", "reserva_autorizada",
+  "suplementacao_autorizada", "anulacoes_autorizada"];
+const CHAVE = "base-calculo-femta-v1";
+
+/* ---------- Estado (valores em centavos) ---------- */
+
+function vazio() { return Object.fromEntries(MESES.map((m) => [m, {}])); }
+let estado = { meses: vazio(), aba: "jan" };
+
+function v(mes, campo) { return estado.meses[mes][campo] ?? 0; }
+
+function salvarLocal() {
+  try {
+    localStorage.setItem(CHAVE, JSON.stringify({
+      meses: estado.meses, entidade: $("entidade").value, ano: $("ano").value, aba: estado.aba,
+    }));
+  } catch { /* armazenamento indisponível */ }
+}
+
+function carregarLocal() {
+  try {
+    const bruto = localStorage.getItem(CHAVE);
+    if (!bruto) return false;
+    const dados = JSON.parse(bruto);
+    if (!dados?.meses) return false;
+    estado.meses = { ...vazio(), ...dados.meses };
+    if (dados.entidade != null) $("entidade").value = dados.entidade;
+    if (dados.ano) $("ano").value = dados.ano;
+    if (MESES.includes(dados.aba) || dados.aba === "resumo") estado.aba = dados.aba;
+    return true;
+  } catch { return false; }
+}
+
+/* ---------- Cálculo (igual às fórmulas da planilha) ---------- */
+
+function calcular() {
+  const r = {};
+  let ant = null;
+  for (const m of MESES) {
+    const x = {};
+    x.despTotal = v(m, "correntes_execucao") + v(m, "capital_execucao");
+    x.dotIni = v(m, "correntes_inicial") + v(m, "capital_inicial");
+    x.dotAut = v(m, "correntes_autorizada") + v(m, "capital_autorizada");
+    x.despOrc = x.despTotal - v(m, "anulacoes_execucao");
+    x.saldoAnterior = ant ? r[ant].saldoFinal : v(m, "saldo_exercicio_anterior");
+    x.saldoFinal = v(m, "saldo_final");
+    x.ingressos = v(m, "receita_realizada") + v(m, "transf_recebida_orcamentaria") + v(m, "receita_extraorcamentaria")
+      + v(m, "transf_recebida_extraorcamentaria") + x.saldoAnterior;
+    x.dispendios = x.despOrc + v(m, "transf_concedida_orcamentaria") + v(m, "despesa_extraorcamentaria")
+      + v(m, "transf_concedida_extraorcamentaria") + x.saldoFinal;
+    x.roRe = v(m, "receita_realizada") + v(m, "receita_extraorcamentaria");
+    x.doDe = x.despOrc + v(m, "despesa_extraorcamentaria");
+    x.rfp = x.roRe - x.doDe;
+    x.diferenca = v(m, "receita_realizada") - x.despTotal;
+    x.recAcum = v(m, "receita_realizada") + (ant ? r[ant].recAcum : 0);
+    x.despAcum = x.despOrc + (ant ? r[ant].despAcum : 0);
+    x.dotAcumIni = x.dotIni + v(m, "reserva_inicial") + v(m, "suplementacao_inicial") + v(m, "especial_inicial") - v(m, "anulacoes_inicial");
+    x.dotAcumAut = x.dotAut + v(m, "reserva_autorizada");
+    x.confBalanco = x.ingressos - x.dispendios;
+    x.confDotacao = x.dotAut - (x.dotIni + v(m, "suplementacao_autorizada") - v(m, "anulacoes_autorizada"));
+    x.vazio = Object.values(estado.meses[m]).every((n) => !n);
+    x.situacao = x.vazio ? "vazio" : (x.confBalanco === 0 && x.confDotacao === 0 ? "ok" : "verificar");
+    r[m] = x;
+    ant = m;
+  }
+  return r;
+}
+
+/* ---------- Formatação ---------- */
+
+const NUM = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const PCT = new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (c) => NUM.format(c / 100);
+const pct = (a, b) => (b ? PCT.format(a / b) : "0,00%");
+
+function paraCentavos(texto) {
+  let t = String(texto ?? "").replace(/R\$/g, "").replace(/\s/g, "");
+  if (!t) return 0;
+  let neg = false;
+  if (t.startsWith("(") && t.endsWith(")")) { neg = true; t = t.slice(1, -1); }
+  if (t.startsWith("-")) { neg = !neg; t = t.slice(1); }
+  if (t.includes(",") && t.includes(".")) {
+    t = t.lastIndexOf(",") > t.lastIndexOf(".") ? t.replace(/\./g, "").replace(",", ".") : t.replace(/,/g, "");
+  } else if (t.includes(",")) t = t.replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, "");
+  if (!/^\d+(\.\d+)?$/.test(t)) return null;
+  const [i, d = ""] = t.split(".");
+  const c = Number(i) * 100 + Math.round(Number((d + "000").slice(0, 3)) / 10);
+  return neg ? -c : c;
+}
+
+/* ---------- Interface ---------- */
+
+const $ = (id) => document.getElementById(id);
+
+function el(tag, props = {}, ...filhos) {
+  const e = document.createElement(tag);
+  for (const [k, val] of Object.entries(props)) {
+    if (k === "class") e.className = val;
+    else if (k === "text") e.textContent = val;
+    else e.setAttribute(k, val);
+  }
+  e.append(...filhos.filter((f) => f != null));
+  return e;
+}
+
+function entrada(mes, campo, rotulo) {
+  const input = el("input", { class: "valor", type: "text", inputmode: "decimal", "aria-label": rotulo, id: `c-${mes}-${campo}` });
+  input.value = fmt(v(mes, campo));
+  input.addEventListener("change", () => {
+    const c = paraCentavos(input.value);
+    if (c === null) { input.classList.add("invalido"); return; }
+    input.classList.remove("invalido");
+    if (c) estado.meses[mes][campo] = c; else delete estado.meses[mes][campo];
+    input.value = fmt(c);
+    salvarLocal();
+    // Espera o foco ir para o próximo campo (Tab/Enter) antes de redesenhar.
+    setTimeout(atualizar, 0);
+  });
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") input.blur(); });
+  input.addEventListener("focus", () => input.select());
+  return el("td", {}, input);
+}
+
+const num = (c, extra = "") => el("td", { class: `n ${c < 0 ? "negativo" : ""} ${extra}`, text: fmt(c) });
+const per = (a, b) => el("td", { class: "p", text: pct(a, b) });
+
+function tabela(cabecalho, linhas) {
+  return el("div", { class: "rolagem" }, el("table", {},
+    el("thead", {}, el("tr", {}, ...cabecalho.map((h) => el("th", { text: h })))),
+    el("tbody", {}, ...linhas)));
+}
+
+function quadroReceita(m, r) {
+  const x = r[m];
+  const linha = (rotulo, pre) => el("tr", {}, el("td", { text: rotulo }),
+    entrada(m, `${pre}_previsto`, `${rotulo} prevista`), entrada(m, `${pre}_atualizado`, `${rotulo} atualizada`),
+    entrada(m, `${pre}_realizado`, `${rotulo} realizada`),
+    per(v(m, `${pre}_realizado`), v(m, `${pre}_previsto`)), per(v(m, `${pre}_realizado`), v(m, `${pre}_atualizado`)));
+  const prev = v(m, "receita_prevista"), atu = v(m, "receita_atualizada"), real = v(m, "receita_realizada");
+  return el("section", { class: "quadro" }, el("h3", { text: "Quadro 1 · Receita" }), tabela(
+    ["Títulos", "Receita prevista", "Receita atualizada", "Realização", "% previsto", "% atualizado"], [
+      el("tr", {}, el("td", { text: "Receitas Correntes" }),
+        entrada(m, "receita_prevista", "Receita prevista"), entrada(m, "receita_atualizada", "Receita atualizada"),
+        entrada(m, "receita_realizada", "Receita realizada"), per(real, prev), per(real, atu)),
+      el("tr", { class: "total" }, el("td", { text: "Total" }), num(prev), num(atu), num(real), per(real, prev), per(real, atu)),
+      linha("Superávit Fin. Exer. Anterior", "superavit"),
+      linha("Excesso de Arrecadação", "excesso"),
+      linha("Saldo do Mês Anterior", "saldo_mes_ant"),
+      el("tr", { class: "total" }, el("td", { text: "Total Acumulado" }), num(prev), num(atu), num(x.recAcum),
+        per(x.recAcum, prev), per(x.recAcum, atu)),
+    ]));
+}
+
+function quadroDespesa(m, r) {
+  const x = r[m];
+  const linha = (rotulo, pre) => el("tr", {}, el("td", { text: rotulo }),
+    entrada(m, `${pre}_inicial`, `${rotulo} inicial`), entrada(m, `${pre}_autorizada`, `${rotulo} autorizada`),
+    entrada(m, `${pre}_execucao`, `${rotulo} execução`), per(v(m, `${pre}_execucao`), v(m, `${pre}_autorizada`)));
+  return el("section", { class: "quadro" }, el("h3", { text: "Quadro 2 · Despesa" }), tabela(
+    ["Títulos", "Dotação inicial", "Dotação autorizada", "Execução", "Percentual"], [
+      linha("Despesas Correntes", "correntes"),
+      linha("Despesas de Capital e Amortização", "capital"),
+      el("tr", { class: "total" }, el("td", { text: "Total" }), num(x.dotIni), num(x.dotAut), num(x.despTotal), per(x.despTotal, x.dotAut)),
+      linha("Reserva de Contingência", "reserva"),
+      linha("Suplementação", "suplementacao"),
+      linha("Dotação Especial", "especial"),
+      linha("Anulações", "anulacoes"),
+      el("tr", { class: "total" }, el("td", { text: "Total Acumulado" }), num(x.dotAcumIni), num(x.dotAcumAut), num(x.despAcum),
+        per(x.despAcum, x.dotAcumIni)),
+    ]));
+}
+
+function quadroFinanceiro(m, r) {
+  const x = r[m];
+  const primeiro = m === "jan";
+  const linhas = (itens) => itens.map(([rotulo, celula]) => el("tr", {}, el("td", { text: rotulo }), celula));
+  const ingressos = tabela(["Receita", ""], [
+    el("tr", { class: "total" }, el("td", { text: "Ingressos" }), num(x.ingressos)),
+    ...linhas([
+      ["Receita Orçamentária", num(v(m, "receita_realizada"))],
+      ["Transf. Recebida Orçamentária", entrada(m, "transf_recebida_orcamentaria", "Transf. recebida orçamentária")],
+      ["Receita Extraorçamentária", entrada(m, "receita_extraorcamentaria", "Receita extraorçamentária")],
+      ["Transf. Recebida Extraorçamentária", entrada(m, "transf_recebida_extraorcamentaria", "Transf. recebida extraorçamentária")],
+      [primeiro ? "Saldo do Exercício Anterior" : "Saldo do Mês Anterior",
+        primeiro ? entrada(m, "saldo_exercicio_anterior", "Saldo do exercício anterior") : num(x.saldoAnterior)],
+    ]),
+  ]);
+  const dispendios = tabela(["Despesa", ""], [
+    el("tr", { class: "total" }, el("td", { text: "Dispêndios" }), num(x.dispendios)),
+    ...linhas([
+      ["Despesa Orçamentária", num(x.despOrc)],
+      ["Transf. Concedida Orçamentária", entrada(m, "transf_concedida_orcamentaria", "Transf. concedida orçamentária")],
+      ["Despesa Extraorçamentária", entrada(m, "despesa_extraorcamentaria", "Despesa extraorçamentária")],
+      ["Transf. Concedida Extraorçamentária", entrada(m, "transf_concedida_extraorcamentaria", "Transf. concedida extraorçamentária")],
+      ["Saldo para o Exercício Seguinte", entrada(m, "saldo_final", "Saldo para o exercício seguinte")],
+    ]),
+  ]);
+  return el("section", { class: "quadro" }, el("h3", { text: "Quadro 3 · Balanço financeiro" }),
+    el("div", { class: "financeiro" }, ingressos, dispendios),
+    primeiro ? null : el("p", { class: "legenda", text: "O saldo do mês anterior vem do saldo final do mês anterior." }));
+}
+
+function painelResultado(m, r) {
+  const x = r[m];
+  const indicador = (rotulo, c) => el("div", { class: "indicador" }, el("span", { text: rotulo }),
+    el("strong", { text: fmt(c), class: c < 0 ? "negativo" : "" }));
+  const conferencia = (rotulo, c) => el("div", { class: "conferencia" }, el("span", { text: rotulo }),
+    el("strong", { text: fmt(c), class: c ? "negativo" : "" }));
+  const dicas = [];
+  if (!x.vazio && x.confBalanco) {
+    dicas.push(el("p", { class: "dica", text: `Para fechar o balanço, o saldo para o exercício seguinte deveria ser ${fmt(x.saldoFinal + x.confBalanco)}.` }));
+  }
+  if (!x.vazio && x.confDotacao) {
+    dicas.push(el("p", { class: "dica", text: "A dotação autorizada deveria ser igual à inicial + suplementações − anulações (coluna autorizada)." }));
+  }
+  return [
+    el("section", { class: "quadro" }, el("h3", { text: "RFP = (RO + RE) − (DO + DE)" }), el("div", { class: "indicadores" },
+      indicador("(RO + RE)", x.roRe), indicador("(DO + DE)", x.doDe), indicador("RFP", x.rfp),
+      indicador("Diferença do quadro 1 e 2", x.diferenca))),
+    el("section", { class: "quadro" }, el("h3", { text: "Conferências" }), el("div", { class: "conferencias" },
+      conferencia("Ingressos − Dispêndios", x.confBalanco),
+      conferencia("Dotação autorizada − (inicial + supl. − anul.)", x.confDotacao),
+      ...dicas)),
+  ];
+}
+
+function selo(situacao) {
+  const textos = { ok: "✔ Conferências OK", verificar: "✘ Verificar conferências", vazio: "Mês não preenchido" };
+  return el("span", { class: `pill ${situacao}`, text: textos[situacao] });
+}
+
+function vistaMes(m, r) {
+  const i = MESES.indexOf(m);
+  const copiar = i ? el("button", { type: "button", class: "secundario", id: "copiar" }, `Copiar previsões e dotações de ${NOMES[i - 1].toLowerCase()}`) : null;
+  copiar?.addEventListener("click", () => {
+    for (const campo of REPETIDOS) {
+      const valor = v(MESES[i - 1], campo);
+      if (valor) estado.meses[m][campo] = valor; else delete estado.meses[m][campo];
+    }
+    salvarLocal(); atualizar();
+  });
+  return [
+    el("div", { class: "mes-topo" },
+      el("div", {}, el("h2", { text: `${NOMES[i]}/${$("ano").value}` }), selo(r[m].situacao)), copiar),
+    el("div", { class: "quadros" },
+      el("div", { class: "coluna" }, quadroReceita(m, r), quadroDespesa(m, r)),
+      el("div", { class: "coluna" }, quadroFinanceiro(m, r), ...painelResultado(m, r))),
+  ];
+}
+
+function vistaResumo(r) {
+  const linhas = MESES.map((m, i) => {
+    const x = r[m];
+    return el("tr", {}, el("td", { text: NOMES[i] }),
+      num(v(m, "receita_atualizada")), num(v(m, "receita_realizada")), num(x.recAcum),
+      num(x.dotAut), num(x.despTotal), num(x.despAcum),
+      num(x.ingressos), num(x.rfp), num(x.saldoFinal),
+      el("td", {}, selo(x.situacao)));
+  });
+  const soma = (f) => MESES.reduce((s, m) => s + f(m), 0);
+  linhas.push(el("tr", { class: "total" }, el("td", { text: "Total do ano" }),
+    el("td"), num(soma((m) => v(m, "receita_realizada"))), el("td"),
+    el("td"), num(soma((m) => r[m].despTotal)), el("td"),
+    el("td"), num(soma((m) => r[m].rfp)), el("td"), el("td")));
+  return [
+    el("div", { class: "mes-topo" }, el("h2", { text: `Resumo anual ${$("ano").value}` })),
+    el("section", { class: "quadro resumo" }, tabela(
+      ["Mês", "Receita atualizada", "Receita realizada", "Receita acumulada", "Dotação autorizada", "Despesa executada",
+        "Despesa acumulada", "Ingressos", "RFP", "Saldo final", "Situação"], linhas)),
+    el("p", { class: "nota", text: "A planilha baixada traz também a aba Resumo Anual completa, no mesmo formato do modelo." }),
+  ];
+}
+
+function desenharAbas(r) {
+  const abas = $("abas");
+  abas.replaceChildren(...[...MESES, "resumo"].map((m, i) => {
+    const b = el("button", { type: "button", class: "aba", role: "tab", "aria-selected": String(estado.aba === m), id: `aba-${m}` },
+      m === "resumo" ? null : el("span", { class: `ponto ${r[m].situacao}` }),
+      m === "resumo" ? "Resumo anual" : NOMES[i].slice(0, 3));
+    b.addEventListener("click", () => { estado.aba = m; salvarLocal(); atualizar(); });
+    return b;
+  }));
+}
+
+function atualizar() {
+  const ativo = document.activeElement?.id;
+  const r = calcular();
+  $("titulo").textContent = `Base de Cálculo ${$("ano").value}`;
+  desenharAbas(r);
+  $("conteudo").replaceChildren(...(estado.aba === "resumo" ? vistaResumo(r) : vistaMes(estado.aba, r)));
+  if (ativo && ativo.startsWith("c-") && $(ativo)) $(ativo).focus();
+}
+
+function mensagem(tipo, texto) {
+  $("mensagem").replaceChildren(texto ? el("div", { class: `mensagem ${tipo}`, text: texto }) : "");
+}
+
+/* ---------- Importação ---------- */
+
+function numeroCelula(valor) {
+  if (valor == null || valor === "") return 0;
+  if (typeof valor === "number") return Math.round(valor * 100);
+  if (valor instanceof Date) return null;
+  if (typeof valor === "object") {
+    if (typeof valor.result === "number") return Math.round(valor.result * 100);
+    if (valor.formula && /^[\d.\s+-]+$/.test(valor.formula)) {
+      return valor.formula.match(/[-+]?\s*[\d.]+/g).reduce((s, p) => s + Math.round(Number(p.replace(/\s/g, "")) * 100), 0);
+    }
+    if (valor.richText) return paraCentavos(valor.richText.map((t) => t.text).join(""));
+    return null;
+  }
+  const t = String(valor).trim();
+  if (!t) return 0;
+  if (t.startsWith("=") && /^=[\d.\s+-]+$/.test(t)) return numeroCelula({ formula: t.slice(1) });
+  return paraCentavos(t);
+}
+
+async function importar(arquivo) {
+  const livro = new ExcelJS.Workbook();
+  try { await livro.xlsx.load(await arquivo.arrayBuffer()); }
+  catch { throw new Error("Não foi possível abrir a planilha. Salve como .xlsx e tente de novo."); }
+  const abas = Object.fromEntries(livro.worksheets.map((w) => [w.name.trim().toLowerCase(), w]));
+  if (!MESES.some((m) => abas[m])) throw new Error("A planilha não tem abas com os nomes dos meses (jan, fev, …).");
+  const meses = vazio();
+  const problemas = [];
+  for (const m of MESES) {
+    const aba = abas[m];
+    if (!aba) continue;
+    for (const [campo, ref] of Object.entries(CAMPOS)) {
+      if (m !== "jan" && campo === "saldo_exercicio_anterior") continue;
+      const c = numeroCelula(aba.getCell(ref).value);
+      if (c === null) problemas.push(`${m} ${ref}`);
+      else if (c) meses[m][campo] = c;
+    }
+  }
+  if (problemas.length) throw new Error(`Valores não reconhecidos nas células: ${problemas.slice(0, 12).join(", ")}${problemas.length > 12 ? "…" : ""}.`);
+  const d4 = abas["resumo anual"]?.getCell("D4").value;
+  return { meses, ano: d4 instanceof Date ? d4.getUTCFullYear() : null };
+}
+
+/* ---------- Exportação (mesmo layout do modelo) ---------- */
+
+async function gerarPlanilha() {
+  const ano = Number($("ano").value) || new Date().getFullYear();
+  const entidade = $("entidade").value.trim();
+  const livro = new ExcelJS.Workbook();
+  livro.calcProperties.fullCalcOnLoad = true;
+  const fino = { style: "thin" };
+  const borda = { top: fino, left: fino, bottom: fino, right: fino };
+  const solido = (cor) => ({ type: "pattern", pattern: "solid", fgColor: { argb: `FF${cor}` } });
+  const ESCURO = solido("A6A6A6"), CLARO = solido("D9D9D9"), RFP = solido("BFBFBF");
+  const centro = { horizontal: "center", vertical: "middle", wrapText: true };
+  const meio = { vertical: "middle", wrapText: true };
+  const MOEDA = '_-"R$"\\ * #,##0.00_-;\\-"R$"\\ * #,##0.00_-;_-"R$"\\ * "-"??_-;_-@_-';
+  const MOEDA_S = '"R$"\\ #,##0.00;[Red]\\-"R$"\\ #,##0.00';
+  const PERC = "0.00%";
+  const F = (f) => ({ formula: f.replace(/^=/, "") });
+
+  function put(aba, ref, valor, o = {}) {
+    const c = aba.getCell(ref);
+    c.value = typeof valor === "string" && valor.startsWith("=") ? F(valor) : valor;
+    const fonte = o.fonte ?? "Arial";
+    c.font = { name: fonte, size: fonte === "Arial" ? 12 : 11, bold: !!o.negrito };
+    c.border = borda;
+    c.alignment = o.alin ?? meio;
+    if (o.fundo) c.fill = o.fundo;
+    if (o.formato) c.numFmt = o.formato;
+  }
+  const campoDe = (ref) => Object.keys(CAMPOS).find((k) => CAMPOS[k] === ref);
+  const val = (m, ref) => v(m, campoDe(ref)) / 100;
+
+  MESES.forEach((m, i) => {
+    const ant = i ? MESES[i - 1] : null;
+    const aba = livro.addWorksheet(m, { views: [{ showGridLines: false, zoomScale: 84 }] });
+    const larguras = { A: 9, B: 36.6, C: 26.1, D: 28.7, E: 20.9, F: 16, G: 20.1, H: 9, I: 4, J: 37.4, K: 22.4, L: 41.3, M: 22.4 };
+    for (const [col, w] of Object.entries(larguras)) aba.getColumn(col).width = w;
+    if (entidade) {
+      aba.getCell("B1").value = `${entidade} — Base de cálculo ${m.toUpperCase()}/${ano}`;
+      aba.getCell("B1").font = { name: "Arial", size: 12, bold: true };
+    }
+
+    // Quadro 1
+    for (const [ref, t] of Object.entries({ B3: "TÍTULOS", C3: "RECEITA PREVISTA", D3: "RECEITA ATUALIZADA", E3: "REALIZAÇÃO", F3: "% PREVISTO", G3: "% ATUALIZADO" })) {
+      put(aba, ref, t, { negrito: true, fundo: ESCURO, alin: centro });
+      put(aba, `${ref[0]}4`, null, { fundo: ESCURO });
+      aba.mergeCells(`${ref}:${ref[0]}4`);
+    }
+    const titulosRec = { 5: "Receitas Correntes", 6: "Total", 7: "Superávit Fin. Exer. Anterior", 8: "Excesso de Arrecadação", 9: "Saldo do Mês Anterior", 10: "Total Acumulado" };
+    for (const [l, t] of Object.entries(titulosRec)) {
+      const destaque = l === "6" || l === "10";
+      const fundo = destaque ? CLARO : undefined;
+      put(aba, `B${l}`, t, { negrito: destaque, fundo });
+      for (const col of "CDE") {
+        let valor;
+        if (l === "6") valor = `=${col}5`;
+        else if (l === "10") valor = col === "E" ? (ant ? `=${ant}!E10+${m}!E6` : "=E6") : `=${col}6`;
+        else valor = val(m, `${col}${l}`);
+        put(aba, `${col}${l}`, valor, { negrito: destaque, fundo, formato: MOEDA, alin: l === "10" ? centro : meio });
+      }
+      put(aba, `F${l}`, `=IFERROR(E${l}/C${l},0)`, { negrito: destaque, fundo, formato: PERC, alin: centro });
+      put(aba, `G${l}`, `=IFERROR(E${l}/D${l},0)`, { negrito: destaque, fundo, formato: PERC, alin: centro });
+    }
+
+    // Quadro 3
+    put(aba, "J3", "RECEITA", { negrito: true, fundo: ESCURO, alin: centro }); put(aba, "K3", null, { fundo: ESCURO }); aba.mergeCells("J3:K3");
+    put(aba, "L3", "DESPESA", { negrito: true, fundo: ESCURO, alin: centro }); put(aba, "M3", null, { fundo: ESCURO }); aba.mergeCells("L3:M3");
+    put(aba, "J4", "INGRESSOS", { negrito: true, fundo: CLARO, alin: centro });
+    put(aba, "K4", "=SUM(K5:K9)", { negrito: true, fundo: CLARO, formato: MOEDA_S, alin: centro });
+    put(aba, "L4", "DISPÊNDIOS", { negrito: true, fundo: CLARO, alin: centro });
+    put(aba, "M4", "=SUM(M5:M9)", { negrito: true, fundo: CLARO, formato: MOEDA_S, alin: centro });
+    const ing = { 5: "Receita Orçamentária", 6: "Transf. Recebida Orçamentária", 7: "Receita Extraorçamentária", 8: "Transf. Recebida Extraorçamentária", 9: ant ? "Saldo do Mês Anterior" : "Saldo do Exercício Anterior" };
+    const dis = { 5: "Despesa Orçamentária", 6: "Transf. Concedida Orçamentária", 7: "Despesa Extraorçamentária", 8: "Transf. Concedida Extraorçamentária", 9: "Saldo para o Exercício Seguinte" };
+    for (let l = 5; l <= 9; l++) {
+      put(aba, `J${l}`, ing[l]); put(aba, `L${l}`, dis[l]);
+      let k, mm;
+      if (l === 5) { k = "=E6"; mm = "=E18-E22"; }
+      else if (l === 9 && ant) { k = `=${ant}!M9`; mm = val(m, "M9"); }
+      else { k = val(m, `K${l}`); mm = val(m, `M${l}`); }
+      put(aba, `K${l}`, k, { formato: MOEDA, alin: centro });
+      put(aba, `M${l}`, mm, { formato: MOEDA, alin: centro });
+    }
+
+    // Quadro 2
+    for (const [ref, t] of Object.entries({ B14: "TÍTULOS", C14: "DOTAÇÃO INICIAL", D14: "DOTAÇÃO AUTORIZADA", E14: "EXECUÇÃO", F14: "PERCENTUAL" })) {
+      put(aba, ref, t, { negrito: true, fundo: ESCURO, alin: centro });
+      put(aba, `${ref[0]}15`, null, { fundo: ESCURO });
+      aba.mergeCells(`${ref}:${ref[0]}15`);
+    }
+    const titulosDesp = { 16: "Despesas Correntes", 17: "Despesas de Capital e Amortização", 18: "Total", 19: "Reserva de Contingência", 20: "Suplementação", 21: "Dotação Especial", 22: "Anulações", 23: "Total Acumulado" };
+    for (const [l, t] of Object.entries(titulosDesp)) {
+      const destaque = l === "18" || l === "23";
+      const fundo = destaque ? CLARO : undefined;
+      put(aba, `B${l}`, t, { negrito: destaque, fundo });
+      for (const col of "CDE") {
+        let valor;
+        if (l === "18") valor = `=${col}16+${col}17`;
+        else if (l === "23") valor = { C: "=C18+C19+C20+C21-C22", D: "=D18+D19", E: ant ? `=${ant}!E23+${m}!E18-${m}!E22` : "=E18-E22" }[col];
+        else valor = val(m, `${col}${l}`);
+        put(aba, `${col}${l}`, valor, { negrito: destaque, fundo, formato: MOEDA });
+      }
+      put(aba, `F${l}`, l === "23" ? "=IFERROR(E23/C23,0)" : `=IFERROR(E${l}/D${l},0)`, { negrito: destaque, fundo, formato: PERC, alin: centro });
+    }
+
+    // RFP e conferências
+    put(aba, "J14", "RFP = (RO + RE) - (DO + DE)", { negrito: true, fundo: RFP, alin: centro }); put(aba, "K14", null, { fundo: RFP }); aba.mergeCells("J14:K14");
+    put(aba, "J15", "=K5+K7", { formato: MOEDA, alin: centro }); put(aba, "K15", "(RO + RE)", { negrito: true, alin: centro });
+    put(aba, "J16", "=M5+M7", { formato: MOEDA, alin: centro }); put(aba, "K16", "(DO + DE)", { negrito: true, alin: centro });
+    put(aba, "J17", "=J15-J16", { negrito: true, formato: MOEDA_S, alin: centro }); put(aba, "K17", "RFP", { negrito: true, alin: centro });
+    put(aba, "J20", "DIFERENÇA DO QUADRO 1 E 2", { negrito: true, fundo: CLARO, alin: centro });
+    put(aba, "J21", "=E6-E18", { negrito: true, formato: MOEDA, alin: centro });
+    put(aba, "L14", "CONFERÊNCIAS", { negrito: true, fundo: RFP, alin: centro }); put(aba, "M14", null, { fundo: RFP }); aba.mergeCells("L14:M14");
+    put(aba, "L15", "Ingressos − Dispêndios"); put(aba, "M15", "=ROUND(K4-M4,2)", { formato: MOEDA, alin: centro });
+    put(aba, "L16", "Dotação autorizada − (inicial + supl. − anul.)"); put(aba, "M16", "=ROUND(D18-(C18+D20-D22),2)", { formato: MOEDA, alin: centro });
+    put(aba, "L17", "Situação", { negrito: true }); put(aba, "M17", '=IF(AND(M15=0,M16=0),"OK","VERIFICAR")', { negrito: true, alin: centro });
+  });
+
+  resumoAnual(livro, ano, put, ESCURO, CLARO, centro);
+  return new Blob([await livro.xlsx.writeBuffer()]);
+}
+
+function resumoAnual(livro, ano, put, ESCURO, CLARO, centro) {
+  const aba = livro.addWorksheet("Resumo Anual", { views: [{ showGridLines: false, zoomScale: 90 }] });
+  const larguras = { A: 9, B: 39.4, C: 33.4, D: 23.3, E: 23.3, F: 23.3, G: 22.7, H: 23.3, I: 22.3 };
+  for (const [col, w] of Object.entries(larguras)) aba.getColumn(col).width = w;
+  const T = "Times New Roman";
+  const MOEDA = '"R$"\\ #,##0.00';
+  const esquerda = { horizontal: "left", vertical: "middle" };
+  const col = (c, j) => String.fromCharCode(c.charCodeAt(0) + j);
+  const s1 = MESES.slice(0, 6), s2 = MESES.slice(6);
+
+  const cabMeses = (l, c0, meses) => meses.forEach((m, j) => put(aba, `${col(c0, j)}${l}`, new Date(Date.UTC(ano, MESES.indexOf(m), 1)),
+    { fonte: T, negrito: true, fundo: ESCURO, formato: "mmm-yy", alin: centro }));
+  const porMes = (meses, c0, celula) => Object.fromEntries(meses.map((m, j) => [col(c0, j), `=${m}!${celula}`]));
+  const cada = (meses, c0, f) => Object.fromEntries(meses.map((_, j) => [col(c0, j), f(col(c0, j))]));
+
+  function bloco(l, tituloC, tituloMeses, meses, linhas, c0) {
+    put(aba, `B${l}`, "TÍTULOS", { fonte: T, negrito: true, fundo: ESCURO, alin: centro });
+    put(aba, `B${l + 1}`, null, { fonte: T, fundo: ESCURO }); aba.mergeCells(`B${l}:B${l + 1}`);
+    if (tituloC) {
+      put(aba, `C${l}`, tituloC, { fonte: T, negrito: true, fundo: ESCURO, alin: centro });
+      put(aba, `C${l + 1}`, null, { fonte: T, fundo: ESCURO }); aba.mergeCells(`C${l}:C${l + 1}`);
+    }
+    const ultima = col(c0, meses.length - 1);
+    for (let j = 0; j < meses.length; j++) put(aba, `${col(c0, j)}${l}`, j ? null : tituloMeses, { fonte: T, negrito: true, fundo: ESCURO, alin: centro });
+    aba.mergeCells(`${c0}${l}:${ultima}${l}`);
+    cabMeses(l + 1, c0, meses);
+    linhas.forEach(([titulo, destaque, formulas], k) => {
+      const r = l + 2 + k;
+      const fundo = destaque ? CLARO : undefined;
+      put(aba, `B${r}`, titulo, { fonte: T, negrito: destaque, fundo });
+      for (const [c, f] of Object.entries(formulas(r))) put(aba, `${c}${r}`, f, { fonte: T, negrito: destaque, fundo, formato: MOEDA, alin: centro });
+    });
+  }
+
+  const receita = (meses, c0, previsao, acumAnt) => {
+    const extra = (f) => (previsao ? { C: f } : {});
+    return [
+      ["Receitas Correntes", false, () => ({ ...extra("=dez!D5"), ...porMes(meses, c0, "E5") })],
+      ["Total", true, (r) => ({ ...extra(`=SUM(C${r - 1})`), ...cada(meses, c0, (c) => `=SUM(${c}${r - 1})`) })],
+      ["Superávit Fin. Exer. Anterior", false, () => ({ ...extra("=dez!D7"), ...porMes(meses, c0, "E7") })],
+      ["Excesso de Arrecadação", false, () => ({ ...extra("=dez!D8"), ...porMes(meses, c0, "E8") })],
+      ["Saldo do Mês Anterior", false, () => ({ ...extra("=dez!D9"), ...porMes(meses, c0, "E9") })],
+      ["Total Acumulado", true, (r) => {
+        const out = {};
+        meses.forEach((_, j) => {
+          const c = col(c0, j);
+          const anterior = j ? `${col(c, -1)}${r}` : acumAnt;
+          out[c] = `=SUM(${c}${r - 4}:${c}${r - 1})${anterior ? `+${anterior}` : ""}`;
+        });
+        if (previsao) out.C = `=SUM(C${r - 4}:C${r - 1})`;
+        return out;
+      }],
+    ];
+  };
+  const tRec = `ARRECADAÇÃO CONFORME BALANCETES ANALISADOS NO PERÍODO DE JAN A DEZ DE ${ano}`;
+  const tDesp = `DESPESAS CONFORME BALANCETES ANALISADOS NO PERÍODO DE JAN A DEZ DE ${ano}`;
+  bloco(3, "PREVISÃO ATUALIZADA", tRec, s1, receita(s1, "D", true, null), "D");
+  bloco(12, null, tRec, s2, receita(s2, "C", false, "I10"), "C");
+
+  const despesa = (meses, c0, dot) => {
+    const extra = (f) => (dot ? { C: f } : {});
+    return [
+      ["Despesas Correntes", false, () => ({ ...extra("=dez!D16"), ...porMes(meses, c0, "E16") })],
+      ["Despesas de Capital", false, () => ({ ...extra("=dez!D17"), ...porMes(meses, c0, "E17") })],
+      ["Total", true, (r) => ({ ...extra(`=SUM(C${r - 2}:C${r - 1})`), ...cada(meses, c0, (c) => `=SUM(${c}${r - 2}:${c}${r - 1})`) })],
+      ["Suplementação", false, () => ({ ...extra("=dez!D20"), ...porMes(meses, c0, "D20") })],
+      ["Anulações", false, () => ({ ...extra("=dez!D22"), ...porMes(meses, c0, "D22") })],
+      ["Total Acumulado", true, () => ({ ...extra("=dez!D23"), ...porMes(meses, c0, "E23") })],
+    ];
+  };
+  bloco(22, "DOTAÇÃO ATUALIZADA", tDesp, s1, despesa(s1, "D", true), "D");
+  bloco(31, null, tDesp, s2, despesa(s2, "C", false), "C");
+
+  function financeiro(l, meses, titulo, total, itens) {
+    put(aba, `B${l}`, titulo, { fonte: T, negrito: true, fundo: ESCURO, alin: centro });
+    cabMeses(l, "C", meses);
+    put(aba, `B${l + 1}`, total, { fonte: T, negrito: true, fundo: CLARO, alin: centro });
+    meses.forEach((_, j) => put(aba, `${col("C", j)}${l + 1}`, `=SUM(${col("C", j)}${l + 2}:${col("C", j)}${l + 6})`,
+      { fonte: T, negrito: true, fundo: CLARO, formato: MOEDA, alin: centro }));
+    itens.forEach(([rotulo, celula], k) => {
+      const r = l + 2 + k;
+      put(aba, `B${r}`, rotulo, { fonte: T, alin: esquerda });
+      for (const [c, f] of Object.entries(porMes(meses, "C", celula))) put(aba, `${c}${r}`, f, { fonte: T, formato: MOEDA, alin: centro });
+    });
+  }
+  const ingressos = [["Receita Orçamentária", "K5"], ["Transf. Recebida Orçamentária", "K6"], ["Receita Extraorçamentária", "K7"],
+    ["Transf. Recebida Extraorçamentária", "K8"], ["Saldo Anterior", "K9"]];
+  const dispendios = [["Despesa Orçamentária", "M5"], ["Transf. Concedida Orçamentária", "M6"], ["Despesa Extraorçamentária", "M7"],
+    ["Transf. Concedida Extraorçamentária", "M8"], ["Saldo para o Exercício Seguinte", "M9"]];
+  financeiro(41, s1, "RECEITA", "INGRESSOS", ingressos);
+  financeiro(48, s1, "DESPESA", "DISPÊNDIOS", dispendios);
+  financeiro(57, s2, "RECEITA", "INGRESSOS", ingressos);
+  financeiro(64, s2, "DESPESA", "DISPÊNDIOS", dispendios);
+}
+
+/* ---------- Eventos ---------- */
+
+let downloads = null;
+
+$("baixar").addEventListener("click", async () => {
+  if (!downloads) return;
+  const botao = $("baixar");
+  botao.disabled = true;
+  try {
+    if (typeof ExcelJS === "undefined") throw { message: "A biblioteca do Excel não carregou. Recarregue a página." };
+    const blob = await gerarPlanilha();
+    const entidade = $("entidade").value.trim();
+    const sigla = (entidade.match(/[–-]\s*([A-Z]{2,})\s*$/) || [])[1];
+    await downloads.save({ filename: `Base de calculo${sigla ? ` ${sigla}` : ""} ${$("ano").value}.xlsx`, data: blob });
+    mensagem();
+  } catch (e) {
+    if (e?.code === "unavailable" || e?.code === "not_granted") { downloads = null; $("baixar").title = "Download indisponível nesta visualização"; }
+    else if (e?.code !== "declined") mensagem("erro", `Não foi possível gerar a planilha: ${e?.message ?? e}`);
+  } finally {
+    botao.disabled = !downloads;
+  }
+});
+
+$("importar").addEventListener("change", async () => {
+  const arquivo = $("importar").files[0];
+  $("importar").value = "";
+  if (!arquivo) return;
+  try {
+    if (typeof ExcelJS === "undefined") throw new Error("A biblioteca do Excel não carregou. Recarregue a página.");
+    const { meses, ano } = await importar(arquivo);
+    estado.meses = meses;
+    if (ano) $("ano").value = ano;
+    estado.aba = "jan";
+    salvarLocal();
+    atualizar();
+    const r = calcular();
+    const verificar = MESES.filter((m) => r[m].situacao === "verificar");
+    mensagem("info", `Planilha "${arquivo.name}" importada.` + (verificar.length
+      ? ` Meses com conferência a verificar: ${verificar.join(", ")}.` : " Todas as conferências fecharam."));
+  } catch (e) {
+    mensagem("erro", e.message);
+  }
+});
+
+$("novo").addEventListener("click", () => { $("confirmar-novo").hidden = false; $("confirmar-nao").focus(); });
+$("confirmar-nao").addEventListener("click", () => { $("confirmar-novo").hidden = true; });
+$("confirmar-sim").addEventListener("click", () => {
+  const saldoDez = v("dez", "saldo_final");
+  estado.meses = vazio();
+  if (saldoDez) estado.meses.jan.saldo_exercicio_anterior = saldoDez;
+  $("ano").value = Number($("ano").value) + 1;
+  estado.aba = "jan";
+  $("confirmar-novo").hidden = true;
+  salvarLocal();
+  atualizar();
+  mensagem("info", saldoDez ? `Exercício ${$("ano").value} iniciado. O saldo final de dezembro (${fmt(saldoDez)}) foi levado para o saldo do exercício anterior de janeiro.` : `Exercício ${$("ano").value} iniciado.`);
+});
+$("entidade").addEventListener("change", salvarLocal);
+$("ano").addEventListener("change", () => { salvarLocal(); atualizar(); });
+
+if (!carregarLocal() && DADOS_INICIAIS) estado.meses = { ...vazio(), ...DADOS_INICIAIS };
+atualizar();
+
+$("baixar").disabled = true;
+(async () => {
+  try { downloads = await window.claude?.use?.("downloads"); } catch { downloads = null; }
+  $("baixar").disabled = !downloads;
+  if (!downloads) $("baixar").title = "Download indisponível nesta visualização";
+})();
+</script>
