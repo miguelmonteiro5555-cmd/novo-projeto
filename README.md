@@ -13,7 +13,22 @@ Requer Python 3.10+.
 pip install -e ".[dev]"
 ```
 
-## Uso
+## Aplicação web
+
+```bash
+python -m balancete.app        # ou: balancete-app
+```
+
+Abra **http://localhost:5000** no navegador, escolha o mês, envie o plano de
+contas e os lançamentos (e, se quiser, os saldos iniciais) e clique em
+**Gerar balancete**. O balancete aparece na tela, com os totais, a situação de
+fechamento e os avisos, e pode ser baixado em Excel ou CSV. O botão
+**Testar com dados de exemplo** mostra o resultado sem enviar arquivos, e a
+seção *Formato dos arquivos* tem modelos para baixar.
+
+Para usar a partir de outros computadores da rede: `python -m balancete.app --host 0.0.0.0`.
+
+## Linha de comando
 
 ```bash
 python -m balancete --mes 2026-09 \
@@ -108,6 +123,8 @@ balancete/
   exportacao.py  geração do Excel e do CSV
   formato.py     formatação de valores (1.234,56)
   cli.py         linha de comando
+  app.py         aplicação web (Flask)
+  templates/     páginas da aplicação web
 exemplos/        arquivos de exemplo
 tests/           testes automatizados
 ```

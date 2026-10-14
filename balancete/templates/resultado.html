@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block titulo %}Balancete {{ mes_nome }}{% endblock %}
+{% block conteudo %}
+<h1>{{ titulo }}</h1>
+<p class="sub">{% if exemplo %}Gerado com os dados de exemplo. {% endif %}{{ b.linhas|length }} contas no relatório.</p>
+
+{% if b.fechado %}
+<div class="alerta ok">✔ Balancete fechado: débitos = créditos e os saldos somam zero.</div>
+{% else %}
+<div class="alerta falha">✘ Balancete não fechou — confira os avisos abaixo.</div>
+{% endif %}
+
+{% if b.avisos %}
+<div class="alerta aviso">
+  <strong>Avisos</strong>
+  <ul>{% for a in b.avisos %}<li>{{ a }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<div class="numeros">
+  <div class="numero"><span>Saldo anterior</span><strong>{{ b.total_saldo_anterior|saldo }}</strong></div>
+  <div class="numero"><span>Débitos do mês</span><strong>{{ b.total_debitos|valor }}</strong></div>
+  <div class="numero"><span>Créditos do mês</span><strong>{{ b.total_creditos|valor }}</strong></div>
+  <div class="numero"><span>Saldo atual</span><strong>{{ b.total_saldo_atual|saldo }}</strong></div>
+</div>
+
+<div class="botoes" style="margin:0 0 20px">
+  <a class="btn" href="/baixar/{{ id }}.xlsx">⬇ Baixar Excel</a>
+  <a class="btn sec" href="/baixar/{{ id }}.csv">⬇ Baixar CSV</a>
+  <a class="btn sec" href="/">Gerar outro</a>
+</div>
+
+<div class="tabela">
+  <table>
+    <thead>
+      <tr><th>Código</th><th>Descrição</th><th class="v">Saldo anterior</th>
+          <th class="v">Débitos</th><th class="v">Créditos</th><th class="v">Saldo atual</th></tr>
+    </thead>
+    <tbody>
+      {% for l in b.linhas %}
+      <tr class="{{ 'sint' if l.sintetica }}">
+        <td>{{ l.conta.codigo }}</td>
+        <td style="padding-left: {{ 10 + (l.nivel - 1) * 16 }}px">{{ l.conta.descricao }}</td>
+        <td class="v">{{ l.saldo_anterior|saldo }}</td>
+        <td class="v">{{ l.debitos|valor }}</td>
+        <td class="v">{{ l.creditos|valor }}</td>
+        <td class="v">{{ l.saldo_atual|saldo }}</td>
+      </tr>
+      {% endfor %}
+      <tr class="total">
+        <td></td><td>TOTAL</td>
+        <td class="v">{{ b.total_saldo_anterior|saldo }}</td>
+        <td class="v">{{ b.total_debitos|valor }}</td>
+        <td class="v">{{ b.total_creditos|valor }}</td>
+        <td class="v">{{ b.total_saldo_atual|saldo }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}

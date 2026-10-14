@@ -8,16 +8,20 @@ version = "0.1.0"
 description = "Automação do balancete de verificação mensal"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["openpyxl>=3.1"]
+dependencies = ["openpyxl>=3.1", "flask>=3.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
 
 [project.scripts]
 balancete = "balancete.cli:main"
+balancete-app = "balancete.app:main"
 
 [tool.setuptools]
 packages = ["balancete"]
+
+[tool.setuptools.package-data]
+balancete = ["templates/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

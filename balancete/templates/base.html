@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Balancete Mensal{% endblock %}</title>
+  <style>
+    :root {
+      --azul: #1f4e78; --azul-claro: #ddebf7; --fundo: #f4f6f9; --texto: #1d2733;
+      --suave: #5f6b7a; --borda: #dde3ea; --verde: #2e7d32; --vermelho: #c62828;
+      --amarelo: #8a6100; --amarelo-fundo: #fff7e0;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+           background: var(--fundo); color: var(--texto); line-height: 1.45; }
+    header { background: var(--azul); color: #fff; padding: 14px 24px; }
+    header a { color: #fff; text-decoration: none; font-weight: 600; font-size: 1.1rem; }
+    main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 1.4rem; margin: 0 0 4px; }
+    .sub { color: var(--suave); margin: 0 0 20px; }
+    .cartao { background: #fff; border: 1px solid var(--borda); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+    .grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; font-size: .92rem; }
+    .dica { color: var(--suave); font-size: .82rem; font-weight: 400; }
+    input[type=text], input[type=month], input[type=file] {
+      width: 100%; padding: 9px 10px; border: 1px solid var(--borda); border-radius: 6px; font: inherit; background: #fff; }
+    .botoes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; align-items: center; }
+    .btn { display: inline-block; padding: 10px 18px; border-radius: 6px; border: 1px solid var(--azul);
+           background: var(--azul); color: #fff; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
+    .btn.sec { background: #fff; color: var(--azul); }
+    .btn:hover { filter: brightness(1.1); }
+    .alerta { border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; }
+    .alerta ul { margin: 6px 0 0; padding-left: 20px; }
+    .erro { background: #fdecea; border: 1px solid #f5c2c0; color: var(--vermelho); }
+    .aviso { background: var(--amarelo-fundo); border: 1px solid #f0d58c; color: var(--amarelo); }
+    .ok { background: #e8f5e9; border: 1px solid #b7dfb9; color: var(--verde); font-weight: 600; }
+    .falha { background: #fdecea; border: 1px solid #f5c2c0; color: var(--vermelho); font-weight: 600; }
+    .numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .numero { background: #fff; border: 1px solid var(--borda); border-radius: 10px; padding: 14px 16px; }
+    .numero span { display: block; color: var(--suave); font-size: .82rem; }
+    .numero strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+    .tabela { overflow-x: auto; background: #fff; border: 1px solid var(--borda); border-radius: 10px; }
+    table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+    th { background: var(--azul); color: #fff; text-align: left; padding: 9px 10px; position: sticky; top: 0; white-space: nowrap; }
+    td { padding: 7px 10px; border-bottom: 1px solid var(--borda); white-space: nowrap; }
+    td.v, th.v { text-align: right; font-variant-numeric: tabular-nums; }
+    tr.sint td { background: var(--azul-claro); font-weight: 600; }
+    tr.total td { font-weight: 700; border-top: 2px solid var(--texto); border-bottom: 3px double var(--texto); }
+    code { background: var(--fundo); padding: 1px 5px; border-radius: 4px; font-size: .85rem; }
+    details summary { cursor: pointer; font-weight: 600; }
+    details p, details li { font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header><a href="/">📊 Balancete Mensal</a></header>
+  <main>{% block conteudo %}{% endblock %}</main>
+</body>
+</html>

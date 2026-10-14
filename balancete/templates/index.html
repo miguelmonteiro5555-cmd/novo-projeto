@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<h1>Gerar balancete de verificação</h1>
+<p class="sub">Envie o plano de contas e os lançamentos, escolha o mês e gere o balancete.</p>
+
+{% if erros %}
+<div class="alerta erro">
+  <strong>Não foi possível gerar o balancete:</strong>
+  <ul>{% for e in erros %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<form class="cartao" method="post" action="/gerar" enctype="multipart/form-data">
+  <div class="grade">
+    <div>
+      <label for="mes">Mês de referência</label>
+      <input type="month" id="mes" name="mes" value="{{ dados.mes }}" required>
+    </div>
+    <div>
+      <label for="empresa">Empresa <span class="dica">(opcional)</span></label>
+      <input type="text" id="empresa" name="empresa" value="{{ dados.empresa or '' }}" placeholder="Nome para o título">
+    </div>
+  </div>
+
+  <div class="grade" style="margin-top:16px">
+    <div>
+      <label for="plano">Plano de contas <span class="dica">.csv ou .xlsx</span></label>
+      <input type="file" id="plano" name="plano" accept=".csv,.xlsx,.xlsm">
+    </div>
+    <div>
+      <label for="lancamentos">Lançamentos <span class="dica">.csv ou .xlsx</span></label>
+      <input type="file" id="lancamentos" name="lancamentos" accept=".csv,.xlsx,.xlsm">
+    </div>
+    <div>
+      <label for="saldos">Saldos iniciais <span class="dica">opcional</span></label>
+      <input type="file" id="saldos" name="saldos" accept=".csv,.xlsx,.xlsm">
+    </div>
+  </div>
+
+  <label style="margin-top:16px; font-weight:400">
+    <input type="checkbox" name="incluir_zeradas" {% if dados.incluir_zeradas %}checked{% endif %}>
+    Mostrar também contas sem saldo nem movimento
+  </label>
+
+  <div class="botoes">
+    <button class="btn" type="submit">Gerar balancete</button>
+    <button class="btn sec" type="submit" name="exemplo" value="1" formnovalidate>Testar com dados de exemplo</button>
+  </div>
+</form>
+
+<details class="cartao">
+  <summary>Formato dos arquivos</summary>
+  <p>CSV com separador <code>;</code> ou <code>,</code>, ou Excel (primeira aba). Valores como
+    <code>1.234,56</code> ou <code>1234.56</code>; datas como <code>31/12/2026</code> ou <code>2026-12-31</code>.</p>
+  <ul>
+    <li><strong>Plano de contas:</strong> <code>codigo</code>, <code>descricao</code>, <code>natureza</code> (D/C, opcional).
+      Hierarquia pelo código: <code>1</code> &gt; <code>1.1</code> &gt; <code>1.1.01</code>.
+      — <a href="/modelo/plano_de_contas.csv">baixar modelo</a></li>
+    <li><strong>Lançamentos:</strong> <code>data</code>, <code>debito</code>, <code>credito</code>, <code>valor</code>, <code>historico</code> (opcional).
+      Pode conter vários meses. — <a href="/modelo/lancamentos.csv">baixar modelo</a></li>
+    <li><strong>Saldos iniciais:</strong> <code>codigo</code>, <code>saldo</code>, <code>dc</code> (D/C, opcional).
+      — <a href="/modelo/saldos_iniciais.csv">baixar modelo</a></li>
+  </ul>
+</details>
+{% endblock %}
