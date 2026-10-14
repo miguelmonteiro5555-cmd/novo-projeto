@@ -53,6 +53,23 @@ A versão para o navegador fica em [`web/base_calculo.html`](web/base_calculo.ht
 os valores são digitados mês a mês, as conferências aparecem na hora, a
 planilha existente pode ser importada e a planilha Excel é baixada no mesmo modelo.
 
+### Aplicativo para o computador
+
+Um único arquivo `.html` que abre com duplo clique, no Windows ou no Mac, sem
+internet e sem instalar nada (a biblioteca do Excel vai embutida):
+
+```bash
+# Já preenchido com os valores de uma planilha
+python web/gerar_aplicativo.py --de BASE_2025.xlsx --saida "Base de Calculo FEMTA.html"
+
+# Em branco
+python web/gerar_aplicativo.py --saida "Base de Calculo.html"
+```
+
+Os valores digitados ficam guardados no navegador do computador onde o arquivo
+foi aberto. Para levar para outro computador, baixe a planilha e use
+*Importar planilha* lá.
+
 ## Aplicação web (Flask, local)
 
 ```bash
@@ -166,7 +183,7 @@ balancete/
   cli.py         linha de comando
   app.py         aplicação web (Flask)
   templates/     páginas da aplicação web
-web/             versão online, roda no navegador
+web/             versões que rodam no navegador e gerador do aplicativo
 exemplos/        arquivos de exemplo
 tests/           testes automatizados
 ```

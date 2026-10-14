@@ -819,7 +819,22 @@ atualizar();
 
 $("baixar").disabled = true;
 (async () => {
-  try { downloads = await window.claude?.use?.("downloads"); } catch { downloads = null; }
+  if (!window.claude) {
+    // Arquivo aberto direto no navegador (versão para o computador): download comum.
+    downloads = {
+      async save({ filename, data }) {
+        const url = URL.createObjectURL(data instanceof Blob ? data : new Blob([data]));
+        const link = el("a", { href: url, download: filename });
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        return { status: "saved" };
+      },
+    };
+  } else {
+    try { downloads = await window.claude.use("downloads"); } catch { downloads = null; }
+  }
   $("baixar").disabled = !downloads;
   if (!downloads) $("baixar").title = "Download indisponível nesta visualização";
 })();
