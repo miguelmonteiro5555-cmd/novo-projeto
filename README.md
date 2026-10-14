@@ -13,7 +13,15 @@ Requer Python 3.10+.
 pip install -e ".[dev]"
 ```
 
-## Aplicação web
+## Versão online (sem instalar nada)
+
+O arquivo [`web/balancete.html`](web/balancete.html) é uma versão que roda inteira
+no navegador: os arquivos são lidos e o balancete é calculado no próprio
+computador, sem enviar dados a servidores. Ela está publicada em
+https://claude.ai/artifact/U6mcKfqdfjEAHz3K5tN9eD. O link é privado até ser
+compartilhado pelo menu Compartilhar.
+
+## Aplicação web (Flask, local)
 
 ```bash
 python -m balancete.app        # ou: balancete-app
@@ -125,6 +133,7 @@ balancete/
   cli.py         linha de comando
   app.py         aplicação web (Flask)
   templates/     páginas da aplicação web
+web/             versão online, roda no navegador
 exemplos/        arquivos de exemplo
 tests/           testes automatizados
 ```

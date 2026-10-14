@@ -1,0 +1,879 @@
+<title>Balancete Mensal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600&display=swap">
+<style>
+  /* Layout: livro-razão — faixa de controles no topo, resumo em linha, tabela larga em contêiner rolável */
+  :root {
+    --papel: #f6f7f4;
+    --folha: #ffffff;
+    --tinta: #1b2621;
+    --suave: #5d6b64;
+    --linha: #dbe0db;
+    --verde: #1d5c4a;
+    --verde-claro: #e3efe9;
+    --sintetica: #eef3ef;
+    --ok: #23703f;
+    --ok-fundo: #e6f3ea;
+    --erro: #b3261e;
+    --erro-fundo: #fbeaea;
+    --aviso: #8a5a00;
+    --aviso-fundo: #fff4dc;
+    --foco: #2f7d64;
+    --f-titulo: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --f-texto: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --papel: #121815; --folha: #19211d; --tinta: #e4ebe6; --suave: #9aaba2; --linha: #2c3832;
+      --verde: #7cc7a8; --verde-claro: #1f3a30; --sintetica: #1e2a24;
+      --ok: #7fd49a; --ok-fundo: #173323; --erro: #f2a19b; --erro-fundo: #3a1b19;
+      --aviso: #f0c46a; --aviso-fundo: #352a12; --foco: #7cc7a8;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --papel: #121815; --folha: #19211d; --tinta: #e4ebe6; --suave: #9aaba2; --linha: #2c3832;
+    --verde: #7cc7a8; --verde-claro: #1f3a30; --sintetica: #1e2a24;
+    --ok: #7fd49a; --ok-fundo: #173323; --erro: #f2a19b; --erro-fundo: #3a1b19;
+    --aviso: #f0c46a; --aviso-fundo: #352a12; --foco: #7cc7a8;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--papel); color: var(--tinta); font-family: var(--f-texto);
+    font-size: 15px; line-height: 1.5;
+  }
+  .pagina {
+    max-width: 1120px; margin: 0 auto;
+    padding-block: 28px 56px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid; gap: 20px;
+  }
+  .cabeca { display: grid; gap: 4px; }
+  .rotulo { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--suave); font-weight: 500; }
+  h1 { font-family: var(--f-titulo); font-weight: 600; font-size: clamp(26px, 4vw, 34px); line-height: 1.15; margin: 0; text-wrap: balance; }
+  .intro { color: var(--suave); margin: 0; max-width: 65ch; }
+
+  .controles { background: var(--folha); border: 1px solid var(--linha); border-radius: 8px; padding: 20px; display: grid; gap: 18px; }
+  .linha-campos { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .campo { display: grid; gap: 6px; min-width: 0; }
+  .campo label, .campo .nome { font-weight: 600; font-size: 14px; }
+  .campo small { color: var(--suave); font-weight: 400; }
+  input[type=text], input[type=month] {
+    width: 100%; font: inherit; color: var(--tinta); background: var(--papel);
+    border: 1px solid var(--linha); border-radius: 6px; padding: 9px 10px;
+  }
+  .arquivo {
+    border: 1.5px dashed var(--linha); border-radius: 6px; padding: 10px; background: var(--papel);
+    display: grid; gap: 4px; min-width: 0;
+  }
+  .arquivo.com-arquivo { border-style: solid; border-color: var(--verde); background: var(--verde-claro); }
+  .arquivo input { font: inherit; font-size: 13px; color: var(--suave); width: 100%; min-width: 0; }
+  .arquivo .escolhido { font-size: 13px; color: var(--verde); overflow-wrap: anywhere; }
+  .marcar { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+  .acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  button {
+    font: inherit; font-weight: 600; font-size: 14px; border-radius: 6px; padding: 9px 16px; cursor: pointer;
+    border: 1px solid var(--verde); background: var(--verde); color: var(--folha);
+  }
+  button.secundario { background: transparent; color: var(--verde); }
+  button.link { border: 0; background: none; color: var(--verde); padding: 0; text-decoration: underline; font-weight: 500; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; }
+  .privacidade { font-size: 13px; color: var(--suave); margin: 0; }
+
+  .aviso-caixa { border-radius: 8px; padding: 12px 16px; border: 1px solid transparent; }
+  .aviso-caixa ul { margin: 6px 0 0; padding-left: 20px; }
+  .aviso-caixa.erro { background: var(--erro-fundo); color: var(--erro); border-color: color-mix(in srgb, var(--erro) 30%, transparent); }
+  .aviso-caixa.atencao { background: var(--aviso-fundo); color: var(--aviso); border-color: color-mix(in srgb, var(--aviso) 30%, transparent); }
+  .aviso-caixa.info { background: var(--verde-claro); color: var(--tinta); border-color: var(--linha); }
+
+  .relatorio { display: grid; gap: 16px; }
+  .relatorio-topo { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: end; }
+  .relatorio-topo > div { min-width: 0; }
+  h2 { font-family: var(--f-titulo); font-weight: 600; font-size: 22px; margin: 0; text-wrap: balance; }
+  .selo {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;
+    padding: 3px 10px; border-radius: 999px; margin-top: 6px;
+  }
+  .selo.fechado { background: var(--ok-fundo); color: var(--ok); }
+  .selo.aberto { background: var(--erro-fundo); color: var(--erro); }
+  .selo.exemplo { background: var(--aviso-fundo); color: var(--aviso); }
+  .selos { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .resumo { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--linha); border-radius: 8px; background: var(--folha); }
+  .resumo div { padding: 12px 16px; display: grid; gap: 2px; border-left: 1px solid var(--linha); min-width: 0; }
+  .resumo div:first-child { border-left: 0; }
+  .resumo span { font-size: 12px; color: var(--suave); letter-spacing: .04em; text-transform: uppercase; }
+  .resumo strong { font-family: var(--f-num); font-weight: 500; font-size: 18px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  @media (max-width: 640px) {
+    .resumo { grid-template-columns: 1fr 1fr; }
+    .resumo div:nth-child(3) { border-left: 0; }
+    .resumo div:nth-child(n+3) { border-top: 1px solid var(--linha); }
+  }
+
+  .tabela { overflow-x: auto; background: var(--folha); border: 1px solid var(--linha); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th {
+    text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--suave);
+    font-weight: 600; padding: 10px 12px; border-bottom: 2px solid var(--tinta); white-space: nowrap;
+  }
+  td { padding: 7px 12px; border-bottom: 1px solid var(--linha); white-space: nowrap; }
+  td.cod { font-family: var(--f-num); color: var(--suave); font-size: 13px; }
+  td.v, th.v { text-align: right; font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+  th.v { font-family: var(--f-texto); }
+  td .dc { display: inline-block; width: 1.4em; text-align: right; color: var(--suave); }
+  tr.sintetica td { background: var(--sintetica); font-weight: 600; }
+  tr.sintetica td.cod { color: var(--tinta); }
+  tr.total td { font-weight: 600; border-top: 1px solid var(--tinta); border-bottom: 3px double var(--tinta); }
+
+  details { background: var(--folha); border: 1px solid var(--linha); border-radius: 8px; padding: 14px 18px; }
+  summary { cursor: pointer; font-weight: 600; }
+  details p, details li { font-size: 14px; max-width: 75ch; }
+  code { font-family: var(--f-num); font-size: 12.5px; background: var(--papel); border: 1px solid var(--linha); border-radius: 4px; padding: 0 4px; }
+  .modelos { display: flex; flex-wrap: wrap; gap: 14px; }
+  .nota { font-size: 13px; color: var(--suave); }
+  @media (prefers-reduced-motion: no-preference) { button { transition: filter .15s; } button:hover:not(:disabled) { filter: brightness(1.08); } }
+</style>
+
+<div class="pagina">
+  <header class="cabeca">
+    <span class="rotulo">Contabilidade · Fechamento mensal</span>
+    <h1>Balancete de Verificação</h1>
+    <p class="intro">Envie o plano de contas e os lançamentos, escolha o mês e o balancete é calculado na hora, com as contas sintéticas totalizadas e a conferência de fechamento.</p>
+  </header>
+
+  <form class="controles" id="form" novalidate>
+    <div class="linha-campos">
+      <div class="campo">
+        <label for="mes">Mês de referência</label>
+        <input type="month" id="mes" value="2026-09" required>
+      </div>
+      <div class="campo">
+        <label for="empresa">Empresa <small>(opcional)</small></label>
+        <input type="text" id="empresa" placeholder="Nome para o título" autocomplete="organization">
+      </div>
+    </div>
+    <div class="linha-campos">
+      <div class="campo">
+        <label class="nome" for="arq-plano">Plano de contas <small>.csv ou .xlsx</small></label>
+        <div class="arquivo" id="caixa-plano">
+          <input type="file" id="arq-plano" accept=".csv,.xlsx,.xlsm,.txt">
+          <span class="escolhido" id="nome-plano" hidden></span>
+        </div>
+      </div>
+      <div class="campo">
+        <label class="nome" for="arq-lancamentos">Lançamentos <small>.csv ou .xlsx</small></label>
+        <div class="arquivo" id="caixa-lancamentos">
+          <input type="file" id="arq-lancamentos" accept=".csv,.xlsx,.xlsm,.txt">
+          <span class="escolhido" id="nome-lancamentos" hidden></span>
+        </div>
+      </div>
+      <div class="campo">
+        <label class="nome" for="arq-saldos">Saldos iniciais <small>opcional</small></label>
+        <div class="arquivo" id="caixa-saldos">
+          <input type="file" id="arq-saldos" accept=".csv,.xlsx,.xlsm,.txt">
+          <span class="escolhido" id="nome-saldos" hidden></span>
+        </div>
+      </div>
+    </div>
+    <label class="marcar" for="zeradas"><input type="checkbox" id="zeradas"> Mostrar também contas sem saldo nem movimento</label>
+    <div class="acoes">
+      <button type="submit" id="gerar">Gerar balancete</button>
+      <button type="button" class="secundario" id="usar-exemplo">Usar dados de exemplo</button>
+    </div>
+    <p class="privacidade">Os arquivos são processados no seu navegador. Nenhum dado é enviado a servidores.</p>
+  </form>
+
+  <div id="mensagens"></div>
+
+  <section class="relatorio" id="relatorio" aria-live="polite">
+    <div class="relatorio-topo">
+      <div>
+        <h2 id="titulo-relatorio">Balancete</h2>
+        <div class="selos" id="selos"></div>
+      </div>
+      <div class="acoes">
+        <button type="button" id="baixar-xlsx" disabled>Baixar Excel</button>
+        <button type="button" class="secundario" id="baixar-csv" disabled>Baixar CSV</button>
+      </div>
+    </div>
+    <p class="nota" id="nota-download" hidden>O download não está disponível nesta visualização. Abra o artefato no claude.ai para baixar os arquivos.</p>
+    <div class="resumo">
+      <div><span>Saldo anterior</span><strong id="r-anterior">0,00</strong></div>
+      <div><span>Débitos do mês</span><strong id="r-debitos">0,00</strong></div>
+      <div><span>Créditos do mês</span><strong id="r-creditos">0,00</strong></div>
+      <div><span>Saldo atual</span><strong id="r-atual">0,00</strong></div>
+    </div>
+    <div class="tabela">
+      <table>
+        <thead>
+          <tr><th>Código</th><th>Descrição</th><th class="v">Saldo anterior</th><th class="v">Débitos</th><th class="v">Créditos</th><th class="v">Saldo atual</th></tr>
+        </thead>
+        <tbody id="corpo"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <details>
+    <summary>Formato dos arquivos</summary>
+    <p>CSV com separador <code>;</code> ou <code>,</code> (UTF-8 ou ANSI), ou Excel (primeira aba). Valores como <code>1.234,56</code>, <code>1234.56</code> ou <code>R$ 1.234,56</code>; datas como <code>31/12/2026</code> ou <code>2026-12-31</code>. Os cabeçalhos aceitam maiúsculas e acentos.</p>
+    <ul>
+      <li><strong>Plano de contas:</strong> <code>codigo</code>, <code>descricao</code>, <code>natureza</code> (D ou C, opcional). A hierarquia vem do código separado por pontos: <code>1</code> &gt; <code>1.1</code> &gt; <code>1.1.01</code>. Contas com filhas são sintéticas e não recebem lançamentos.</li>
+      <li><strong>Lançamentos:</strong> <code>data</code>, <code>debito</code>, <code>credito</code>, <code>valor</code>, <code>historico</code> (opcional). Uma linha por partida. Pode conter vários meses: os anteriores formam o saldo anterior e os posteriores são ignorados.</li>
+      <li><strong>Saldos iniciais:</strong> <code>codigo</code>, <code>saldo</code>, <code>dc</code> (D ou C, opcional). Saldos antes do primeiro lançamento do arquivo.</li>
+    </ul>
+    <div class="modelos">
+      <button type="button" class="link" data-modelo="plano">Baixar modelo do plano de contas</button>
+      <button type="button" class="link" data-modelo="lancamentos">Baixar modelo de lançamentos</button>
+      <button type="button" class="link" data-modelo="saldos">Baixar modelo de saldos iniciais</button>
+    </div>
+  </details>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script>
+"use strict";
+
+const EXEMPLO = {
+  plano: `codigo;descricao;natureza
+1;ATIVO;D
+1.1;Ativo Circulante;D
+1.1.01;Caixa;D
+1.1.02;Banco Conta Movimento;D
+1.1.03;Clientes;D
+1.1.04;Estoque de Mercadorias;D
+1.2;Ativo Não Circulante;D
+1.2.01;Móveis e Utensílios;D
+2;PASSIVO E PATRIMÔNIO LÍQUIDO;C
+2.1;Passivo Circulante;C
+2.1.01;Fornecedores;C
+2.1.02;Salários a Pagar;C
+2.1.03;Impostos a Recolher;C
+2.3;Patrimônio Líquido;C
+2.3.01;Capital Social;C
+3;RECEITAS;C
+3.1;Receita Bruta;C
+3.1.01;Receita de Vendas;C
+4;CUSTOS E DESPESAS;D
+4.1;Custos;D
+4.1.01;Custo das Mercadorias Vendidas;D
+4.2;Despesas Operacionais;D
+4.2.01;Salários;D
+4.2.02;Aluguel;D
+4.2.03;Energia Elétrica;D
+4.2.04;Impostos sobre Vendas;D
+`,
+  saldos: `codigo;saldo;dc
+1.1.01;5.000,00;D
+1.1.02;45.000,00;D
+1.1.04;20.000,00;D
+1.2.01;30.000,00;D
+2.1.01;10.000,00;C
+2.3.01;90.000,00;C
+`,
+  lancamentos: `data;debito;credito;valor;historico
+05/08/2026;1.1.04;2.1.01;8.000,00;Compra de mercadorias a prazo
+12/08/2026;1.1.03;3.1.01;15.000,00;Venda a prazo
+12/08/2026;4.1.01;1.1.04;9.000,00;Baixa do estoque vendido
+20/08/2026;2.1.01;1.1.02;10.000,00;Pagamento a fornecedores
+31/08/2026;4.2.01;2.1.02;6.000,00;Folha de agosto
+02/09/2026;1.1.02;1.1.03;12.000,00;Recebimento de clientes
+05/09/2026;2.1.02;1.1.02;6.000,00;Pagamento da folha de agosto
+10/09/2026;4.2.02;1.1.02;3.500,00;Aluguel de setembro
+15/09/2026;1.1.02;3.1.01;22.000,00;Venda à vista
+15/09/2026;4.1.01;1.1.04;11.000,00;Baixa do estoque vendido
+18/09/2026;1.1.04;2.1.01;14.000,00;Compra de mercadorias a prazo
+25/09/2026;4.2.03;1.1.01;850,00;Conta de energia
+30/09/2026;4.2.04;2.1.03;2.035,00;Impostos sobre vendas de setembro
+30/09/2026;4.2.01;2.1.02;6.000,00;Folha de setembro
+03/10/2026;1.1.01;3.1.01;1.200,00;Venda à vista (outubro)
+`,
+};
+
+const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+class ErroDeDados extends Error {
+  constructor(problemas) { super(problemas.join("\n")); this.problemas = problemas; }
+}
+
+/* ---------- Leitura ---------- */
+
+const normalizarCabecalho = (s) =>
+  String(s ?? "").normalize("NFKD").replace(/[̀-ͯ]/g, "").trim().toLowerCase().replace(/\s+/g, "_");
+
+function decodificar(buffer) {
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(buffer); }
+  catch { return new TextDecoder("windows-1252").decode(buffer); }
+}
+
+function lerCSV(texto) {
+  texto = texto.replace(/^﻿/, "");
+  const amostra = texto.slice(0, 4096);
+  const sep = amostra.split(";").length >= amostra.split(",").length ? ";" : ",";
+  const linhas = [];
+  let linha = [], campo = "", aspas = false;
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto[i];
+    if (aspas) {
+      if (c === '"') { if (texto[i + 1] === '"') { campo += '"'; i++; } else aspas = false; }
+      else campo += c;
+    } else if (c === '"') aspas = true;
+    else if (c === sep) { linha.push(campo); campo = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && texto[i + 1] === "\n") i++;
+      linha.push(campo); linhas.push(linha); linha = []; campo = "";
+    } else campo += c;
+  }
+  if (campo !== "" || linha.length) { linha.push(campo); linhas.push(linha); }
+  return linhas;
+}
+
+function valorCelula(v) {
+  if (v == null || v instanceof Date) return v ?? null;
+  if (typeof v === "object") {
+    if ("result" in v) return valorCelula(v.result);
+    if (v.richText) return v.richText.map((t) => t.text).join("");
+    if ("text" in v) return v.text;
+    return null;
+  }
+  return v;
+}
+
+async function lerPlanilha(buffer) {
+  const livro = new ExcelJS.Workbook();
+  await livro.xlsx.load(buffer);
+  const aba = livro.worksheets[0];
+  if (!aba) return [];
+  const linhas = [];
+  for (let r = 1; r <= aba.rowCount; r++) {
+    const row = aba.getRow(r);
+    const valores = [];
+    for (let c = 1; c <= aba.columnCount; c++) valores.push(valorCelula(row.getCell(c).value));
+    linhas.push(valores);
+  }
+  return linhas;
+}
+
+function paraRegistros(linhas) {
+  if (!linhas.length) return [];
+  const cabecalho = linhas[0].map(normalizarCabecalho);
+  return linhas.slice(1)
+    .filter((vals) => vals.some((v) => v != null && String(v).trim() !== ""))
+    .map((vals) => Object.fromEntries(cabecalho.map((h, i) => [h, vals[i] ?? null])));
+}
+
+async function lerArquivo(arquivo) {
+  const nome = arquivo.name.toLowerCase();
+  const buffer = await arquivo.arrayBuffer();
+  if (nome.endsWith(".xlsx") || nome.endsWith(".xlsm")) {
+    try { return paraRegistros(await lerPlanilha(buffer)); }
+    catch { throw new ErroDeDados([`${arquivo.name}: não foi possível ler a planilha. Salve como .xlsx ou .csv e tente de novo.`]); }
+  }
+  if (nome.endsWith(".xls")) throw new ErroDeDados([`${arquivo.name}: formato .xls antigo. Salve como .xlsx ou .csv.`]);
+  return paraRegistros(lerCSV(decodificar(buffer)));
+}
+
+/** Converte "1.234,56", "1234.56", "R$ 10,00", "(50,00)" ou números em centavos (inteiro). */
+function paraCentavos(v) {
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) throw new Error(`valor inválido: ${v}`);
+    return Math.round(v * 100);
+  }
+  const original = String(v ?? "");
+  let t = original.replace(/R\$/g, "").replace(/\s/g, "");
+  if (!t) throw new Error("valor vazio");
+  let negativo = false;
+  if (t.startsWith("(") && t.endsWith(")")) { negativo = true; t = t.slice(1, -1); }
+  if (t.startsWith("-")) { negativo = !negativo; t = t.slice(1); }
+  if (t.includes(",") && t.includes(".")) {
+    t = t.lastIndexOf(",") > t.lastIndexOf(".") ? t.replace(/\./g, "").replace(",", ".") : t.replace(/,/g, "");
+  } else if (t.includes(",")) t = t.replace(",", ".");
+  if (!/^\d+(\.\d+)?$/.test(t)) throw new Error(`valor inválido: "${original}"`);
+  const [inteiro, dec = ""] = t.split(".");
+  const centavos = Number(inteiro) * 100 + Math.round(Number((dec + "000").slice(0, 3)) / 10);
+  return negativo ? -centavos : centavos;
+}
+
+const doisDigitos = (n) => String(n).padStart(2, "0");
+const iso = (a, m, d) => `${a}-${doisDigitos(m)}-${doisDigitos(d)}`;
+
+function paraData(v) {
+  if (v instanceof Date) return iso(v.getUTCFullYear(), v.getUTCMonth() + 1, v.getUTCDate());
+  if (typeof v === "number") {
+    const d = new Date(Math.round((v - 25569) * 864e5));
+    return iso(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+  }
+  const t = String(v ?? "").trim();
+  let a, m, d, r;
+  if ((r = t.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4}|\d{2})$/))) {
+    [d, m, a] = [Number(r[1]), Number(r[2]), Number(r[3])];
+    if (r[3].length === 2) a += 2000;
+  } else if ((r = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) {
+    [a, m, d] = [Number(r[1]), Number(r[2]), Number(r[3])];
+  } else throw new Error(`data inválida: "${t}"`);
+  const teste = new Date(Date.UTC(a, m - 1, d));
+  if (teste.getUTCMonth() !== m - 1 || teste.getUTCDate() !== d) throw new Error(`data inválida: "${t}"`);
+  return iso(a, m, d);
+}
+
+function texto(registro, campo) {
+  const v = registro[campo];
+  if (v == null) return "";
+  return String(v).trim();
+}
+
+function exigirColunas(registros, colunas, arquivo) {
+  if (!registros.length) return;
+  const faltando = colunas.filter((c) => !(c in registros[0]));
+  if (faltando.length) throw new ErroDeDados([`${arquivo}: coluna(s) obrigatória(s) ausente(s): ${faltando.join(", ")}`]);
+}
+
+function montarPlano(registros) {
+  exigirColunas(registros, ["codigo", "descricao"], "Plano de contas");
+  const contas = new Map();
+  const problemas = [];
+  registros.forEach((reg, i) => {
+    const n = i + 2;
+    const codigo = texto(reg, "codigo");
+    const natureza = texto(reg, "natureza").toUpperCase().slice(0, 1) || null;
+    if (!codigo) return problemas.push(`Plano de contas, linha ${n}: código vazio`);
+    if (contas.has(codigo)) return problemas.push(`Plano de contas, linha ${n}: código ${codigo} repetido`);
+    if (natureza && natureza !== "D" && natureza !== "C") return problemas.push(`Plano de contas, linha ${n}: natureza deve ser D ou C`);
+    contas.set(codigo, { codigo, descricao: texto(reg, "descricao"), natureza });
+  });
+  if (problemas.length) throw new ErroDeDados(problemas);
+  if (!contas.size) throw new ErroDeDados(["Plano de contas vazio"]);
+  return contas;
+}
+
+function montarLancamentos(registros) {
+  exigirColunas(registros, ["data", "debito", "credito", "valor"], "Lançamentos");
+  const lancamentos = [];
+  const problemas = [];
+  registros.forEach((reg, i) => {
+    const n = i + 2;
+    try {
+      lancamentos.push({
+        data: paraData(reg.data), debito: texto(reg, "debito"), credito: texto(reg, "credito"),
+        valor: paraCentavos(reg.valor), historico: texto(reg, "historico"), linha: n,
+      });
+    } catch (e) { problemas.push(`Lançamentos, linha ${n}: ${e.message}`); }
+  });
+  if (problemas.length) throw new ErroDeDados(problemas);
+  return lancamentos;
+}
+
+function montarSaldos(registros) {
+  exigirColunas(registros, ["codigo", "saldo"], "Saldos iniciais");
+  const saldos = new Map();
+  const problemas = [];
+  registros.forEach((reg, i) => {
+    let saldo;
+    try { saldo = paraCentavos(reg.saldo); }
+    catch (e) { return problemas.push(`Saldos iniciais, linha ${i + 2}: ${e.message}`); }
+    const dc = texto(reg, "dc").toUpperCase().slice(0, 1);
+    if (dc === "C") saldo = -Math.abs(saldo);
+    else if (dc === "D") saldo = Math.abs(saldo);
+    const codigo = texto(reg, "codigo");
+    saldos.set(codigo, (saldos.get(codigo) ?? 0) + saldo);
+  });
+  if (problemas.length) throw new ErroDeDados(problemas);
+  return saldos;
+}
+
+/* ---------- Cálculo ---------- */
+
+function compararCodigos(a, b) {
+  const pa = a.split("."), pb = b.split(".");
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    if (pa[i] === undefined) return -1;
+    if (pb[i] === undefined) return 1;
+    const na = /^\d+$/.test(pa[i]), nb = /^\d+$/.test(pb[i]);
+    if (na && nb) { const d = Number(pa[i]) - Number(pb[i]); if (d) return d; }
+    else if (na !== nb) return na ? -1 : 1;
+    else if (pa[i] !== pb[i]) return pa[i] < pb[i] ? -1 : 1;
+  }
+  return 0;
+}
+
+function ancestrais(codigo, plano) {
+  const partes = codigo.split(".");
+  const lista = [];
+  for (let i = partes.length - 1; i > 0; i--) {
+    const prefixo = partes.slice(0, i).join(".");
+    if (plano.has(prefixo)) lista.push(prefixo);
+  }
+  return lista;
+}
+
+/** Saldos com sinal, em centavos: positivo = devedor, negativo = credor. */
+function gerarBalancete(plano, lancamentos, ano, mes, saldosIniciais = new Map(), incluirZeradas = false) {
+  const inicio = iso(ano, mes, 1);
+  const fim = mes === 12 ? iso(ano + 1, 1, 1) : iso(ano, mes + 1, 1);
+
+  const pais = new Map([...plano.keys()].map((c) => [c, ancestrais(c, plano)]));
+  const sinteticas = new Set([...pais.values()].flat());
+  const linhas = new Map([...plano.values()].map((conta) => [conta.codigo, {
+    conta, nivel: pais.get(conta.codigo).length + 1, sintetica: sinteticas.has(conta.codigo),
+    anterior: 0, debitos: 0, creditos: 0,
+  }]));
+
+  const problemas = [];
+  const checar = (codigo, origem) => {
+    if (!codigo) problemas.push(`${origem}: conta não informada`);
+    else if (!plano.has(codigo)) problemas.push(`${origem}: conta ${codigo} não existe no plano de contas`);
+    else if (sinteticas.has(codigo)) problemas.push(`${origem}: conta ${codigo} é sintética (não aceita lançamentos)`);
+  };
+  for (const l of lancamentos) {
+    const origem = `Lançamentos, linha ${l.linha}`;
+    checar(l.debito, `${origem} (débito)`);
+    checar(l.credito, `${origem} (crédito)`);
+    if (l.debito && l.debito === l.credito) problemas.push(`${origem}: débito e crédito na mesma conta`);
+    if (l.valor <= 0) problemas.push(`${origem}: valor deve ser maior que zero`);
+  }
+  for (const codigo of saldosIniciais.keys()) checar(codigo, "Saldos iniciais");
+  if (problemas.length) throw new ErroDeDados(problemas);
+
+  const acumular = (codigo, campo, valor) => {
+    for (const alvo of [codigo, ...pais.get(codigo)]) linhas.get(alvo)[campo] += valor;
+  };
+  for (const [codigo, saldo] of saldosIniciais) acumular(codigo, "anterior", saldo);
+  for (const l of lancamentos) {
+    if (l.data < inicio) { acumular(l.debito, "anterior", l.valor); acumular(l.credito, "anterior", -l.valor); }
+    else if (l.data < fim) { acumular(l.debito, "debitos", l.valor); acumular(l.credito, "creditos", l.valor); }
+  }
+  for (const l of linhas.values()) l.atual = l.anterior + l.debitos - l.creditos;
+
+  const analiticas = [...linhas.values()].filter((l) => !l.sintetica);
+  const soma = (campo) => analiticas.reduce((s, l) => s + l[campo], 0);
+  const b = {
+    ano, mes,
+    linhas: [...linhas.keys()].sort(compararCodigos).map((c) => linhas.get(c))
+      .filter((l) => incluirZeradas || l.anterior || l.debitos || l.creditos),
+    totalAnterior: soma("anterior"), totalDebitos: soma("debitos"),
+    totalCreditos: soma("creditos"), totalAtual: soma("atual"),
+    avisos: [],
+  };
+  b.fechado = b.totalDebitos === b.totalCreditos && b.totalAtual === 0;
+
+  if (b.totalAnterior !== 0) b.avisos.push(`A soma dos saldos anteriores não é zero (${formatar(b.totalAnterior)}): verifique os saldos iniciais.`);
+  if (!b.totalDebitos && !b.totalCreditos) b.avisos.push("Nenhum lançamento no mês.");
+  for (const l of analiticas) {
+    const nat = l.conta.natureza;
+    if ((nat === "D" && l.atual < 0) || (nat === "C" && l.atual > 0)) {
+      b.avisos.push(`Conta ${l.conta.codigo} (${l.conta.descricao}) com saldo invertido: natureza ${nat}, saldo ${formatarSaldo(l.atual)}.`);
+    }
+  }
+  return b;
+}
+
+/* ---------- Formatação ---------- */
+
+const NUM = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const formatar = (c) => NUM.format(c / 100);
+const dc = (c) => (c === 0 ? "" : c > 0 ? "D" : "C");
+const formatarSaldo = (c) => (c === 0 ? "0,00" : `${NUM.format(Math.abs(c) / 100)} ${dc(c)}`);
+const tituloDe = (b, empresa) => {
+  const t = `Balancete de Verificação — ${MESES[b.mes - 1]}/${b.ano}`;
+  return empresa ? `${empresa} — ${t}` : t;
+};
+
+/* ---------- Exportação ---------- */
+
+async function gerarExcel(b, empresa) {
+  const livro = new ExcelJS.Workbook();
+  const aba = livro.addWorksheet(`Balancete ${doisDigitos(b.mes)}-${b.ano}`, { views: [{ state: "frozen", ySplit: 3 }] });
+  const fmt = '#,##0.00;-#,##0.00;"-"';
+  aba.columns = [14, 45, 16, 5, 16, 16, 16, 5].map((width) => ({ width }));
+
+  aba.mergeCells("A1:H1");
+  aba.getCell("A1").value = tituloDe(b, empresa);
+  aba.getCell("A1").font = { bold: true, size: 14 };
+  aba.addRow([]);
+  const cab = aba.addRow(["Código", "Descrição", "Saldo anterior", "D/C", "Débitos", "Créditos", "Saldo atual", "D/C"]);
+  cab.eachCell((c) => {
+    c.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1D5C4A" } };
+    c.alignment = { horizontal: "center" };
+  });
+
+  const numeros = (row) => [3, 5, 6, 7].forEach((i) => { row.getCell(i).numFmt = fmt; });
+  for (const l of b.linhas) {
+    const row = aba.addRow([l.conta.codigo, l.conta.descricao, Math.abs(l.anterior) / 100, dc(l.anterior),
+      l.debitos / 100, l.creditos / 100, Math.abs(l.atual) / 100, dc(l.atual)]);
+    row.getCell(2).alignment = { indent: l.nivel - 1 };
+    numeros(row);
+    if (l.sintetica) {
+      for (let i = 1; i <= 8; i++) {
+        const c = row.getCell(i);
+        c.font = { bold: true };
+        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE3EFE9" } };
+      }
+    }
+  }
+  const total = aba.addRow(["", "TOTAL", Math.abs(b.totalAnterior) / 100, dc(b.totalAnterior),
+    b.totalDebitos / 100, b.totalCreditos / 100, Math.abs(b.totalAtual) / 100, dc(b.totalAtual)]);
+  numeros(total);
+  for (let i = 1; i <= 8; i++) {
+    total.getCell(i).font = { bold: true };
+    total.getCell(i).border = { top: { style: "thin" }, bottom: { style: "double" } };
+  }
+  aba.addRow([]);
+  const situacao = aba.addRow([b.fechado
+    ? "✔ Balancete fechado: débitos = créditos e saldos somam zero."
+    : "✘ Balancete NÃO fechou — veja a aba Avisos."]);
+  situacao.getCell(1).font = { bold: true, color: { argb: b.fechado ? "FF2E7D32" : "FFC62828" } };
+
+  if (b.avisos.length) {
+    const avisos = livro.addWorksheet("Avisos");
+    avisos.getColumn(1).width = 110;
+    avisos.addRow(["Avisos"]).getCell(1).font = { bold: true };
+    b.avisos.forEach((a) => avisos.addRow([a]));
+  }
+  return new Blob([await livro.xlsx.writeBuffer()]);
+}
+
+function gerarCSV(b) {
+  const esc = (v) => (/[;"\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  const linhas = [["Código", "Descrição", "Saldo anterior", "D/C", "Débitos", "Créditos", "Saldo atual", "D/C"]];
+  for (const l of b.linhas) {
+    linhas.push([l.conta.codigo, l.conta.descricao, formatar(Math.abs(l.anterior)), dc(l.anterior),
+      formatar(l.debitos), formatar(l.creditos), formatar(Math.abs(l.atual)), dc(l.atual)]);
+  }
+  return "﻿" + linhas.map((r) => r.map((v) => esc(String(v))).join(";")).join("\r\n") + "\r\n";
+}
+
+/* ---------- Interface ---------- */
+
+const $ = (id) => document.getElementById(id);
+const estado = { fonte: null, exemplo: true, balancete: null };
+let downloads = null;
+
+function mostrarMensagem(tipo, tituloMsg, itens = []) {
+  const caixa = $("mensagens");
+  caixa.replaceChildren();
+  if (!tituloMsg) return;
+  const div = document.createElement("div");
+  div.className = `aviso-caixa ${tipo}`;
+  const forte = document.createElement("strong");
+  forte.textContent = tituloMsg;
+  div.append(forte);
+  if (itens.length) {
+    const ul = document.createElement("ul");
+    for (const item of itens) { const li = document.createElement("li"); li.textContent = item; ul.append(li); }
+    div.append(ul);
+  }
+  caixa.append(div);
+}
+
+function celula(tr, conteudo, classe) {
+  const td = document.createElement("td");
+  if (classe) td.className = classe;
+  td.textContent = conteudo;
+  tr.append(td);
+  return td;
+}
+
+function celulaSaldo(tr, c) {
+  const td = celula(tr, c === 0 ? "0,00" : NUM.format(Math.abs(c) / 100), "v");
+  const s = document.createElement("span");
+  s.className = "dc";
+  s.textContent = dc(c);
+  td.append(s);
+}
+
+function selo(classe, rotulo) {
+  const s = document.createElement("span");
+  s.className = `selo ${classe}`;
+  s.textContent = rotulo;
+  return s;
+}
+
+function lerMes() {
+  const [a, m] = $("mes").value.split("-").map(Number);
+  return a && m >= 1 && m <= 12 ? [a, m] : null;
+}
+
+function calcularEExibir() {
+  if (!estado.fonte) return;
+  const mes = lerMes();
+  if (!mes) { mostrarMensagem("erro", "Informe o mês de referência."); return; }
+  const { plano, lancamentos, saldos } = estado.fonte;
+  let b;
+  try {
+    b = gerarBalancete(plano, lancamentos, mes[0], mes[1], saldos, $("zeradas").checked);
+  } catch (e) {
+    if (e instanceof ErroDeDados) {
+      estado.fonte = null; estado.balancete = null;
+      $("relatorio").hidden = true;
+      mostrarMensagem("erro", "Não foi possível gerar o balancete. Corrija os arquivos e tente de novo:", e.problemas.slice(0, 50)
+        .concat(e.problemas.length > 50 ? [`… e mais ${e.problemas.length - 50} problema(s).`] : []));
+      return;
+    }
+    throw e;
+  }
+  estado.balancete = b;
+  $("relatorio").hidden = false;
+  if (b.avisos.length) mostrarMensagem("atencao", "Avisos", b.avisos);
+  else mostrarMensagem();
+
+  $("titulo-relatorio").textContent = tituloDe(b, $("empresa").value.trim());
+  $("selos").replaceChildren(
+    b.fechado ? selo("fechado", "✔ Fechado: débitos = créditos") : selo("aberto", "✘ Não fechou"),
+    ...(estado.exemplo ? [selo("exemplo", "Dados de exemplo")] : []),
+    selo("", `${b.linhas.length} contas`),
+  );
+  $("r-anterior").textContent = formatarSaldo(b.totalAnterior);
+  $("r-debitos").textContent = formatar(b.totalDebitos);
+  $("r-creditos").textContent = formatar(b.totalCreditos);
+  $("r-atual").textContent = formatarSaldo(b.totalAtual);
+
+  const corpo = $("corpo");
+  const frag = document.createDocumentFragment();
+  for (const l of b.linhas) {
+    const tr = document.createElement("tr");
+    if (l.sintetica) tr.className = "sintetica";
+    celula(tr, l.conta.codigo, "cod");
+    celula(tr, l.conta.descricao).style.paddingLeft = `${12 + (l.nivel - 1) * 16}px`;
+    celulaSaldo(tr, l.anterior);
+    celula(tr, formatar(l.debitos), "v");
+    celula(tr, formatar(l.creditos), "v");
+    celulaSaldo(tr, l.atual);
+    frag.append(tr);
+  }
+  const tot = document.createElement("tr");
+  tot.className = "total";
+  celula(tot, ""); celula(tot, "TOTAL");
+  celulaSaldo(tot, b.totalAnterior);
+  celula(tot, formatar(b.totalDebitos), "v");
+  celula(tot, formatar(b.totalCreditos), "v");
+  celulaSaldo(tot, b.totalAtual);
+  frag.append(tot);
+  corpo.replaceChildren(frag);
+  atualizarBotoes();
+}
+
+function carregarExemplo() {
+  const ler = (t) => paraRegistros(lerCSV(t));
+  estado.fonte = {
+    plano: montarPlano(ler(EXEMPLO.plano)),
+    lancamentos: montarLancamentos(ler(EXEMPLO.lancamentos)),
+    saldos: montarSaldos(ler(EXEMPLO.saldos)),
+  };
+  estado.exemplo = true;
+  for (const campo of ["plano", "lancamentos", "saldos"]) {
+    $(`arq-${campo}`).value = "";
+    atualizarCaixa(campo);
+  }
+  $("mes").value = "2026-09";
+  calcularEExibir();
+}
+
+async function carregarArquivos(evento) {
+  evento.preventDefault();
+  const plano = $("arq-plano").files[0], lanc = $("arq-lancamentos").files[0], sald = $("arq-saldos").files[0];
+  const faltando = [];
+  if (!plano) faltando.push("Plano de contas: selecione um arquivo.");
+  if (!lanc) faltando.push("Lançamentos: selecione um arquivo.");
+  if (faltando.length) { mostrarMensagem("erro", "Faltam arquivos:", faltando); return; }
+
+  $("gerar").disabled = true;
+  try {
+    const problemas = [];
+    const tentar = async (fn) => { try { return await fn(); } catch (e) { if (e instanceof ErroDeDados) problemas.push(...e.problemas); else throw e; } };
+    const fonte = {
+      plano: await tentar(async () => montarPlano(await lerArquivo(plano))),
+      lancamentos: await tentar(async () => montarLancamentos(await lerArquivo(lanc))),
+      saldos: sald ? await tentar(async () => montarSaldos(await lerArquivo(sald))) : new Map(),
+    };
+    if (problemas.length) {
+      estado.fonte = null; $("relatorio").hidden = true;
+      mostrarMensagem("erro", "Não foi possível ler os arquivos. Corrija e tente de novo:", problemas);
+      return;
+    }
+    estado.fonte = fonte;
+    estado.exemplo = false;
+    // Se o mês escolhido não tem lançamentos, vai para o último mês com movimento.
+    const mes = lerMes();
+    const prefixo = mes ? `${mes[0]}-${doisDigitos(mes[1])}` : "";
+    if (fonte.lancamentos.length && !fonte.lancamentos.some((l) => l.data.startsWith(prefixo))) {
+      $("mes").value = fonte.lancamentos.map((l) => l.data).sort().at(-1).slice(0, 7);
+    }
+    calcularEExibir();
+  } catch (e) {
+    mostrarMensagem("erro", "Erro inesperado ao ler os arquivos.", [String(e?.message ?? e)]);
+  } finally {
+    $("gerar").disabled = false;
+  }
+}
+
+function atualizarCaixa(campo) {
+  const arquivo = $(`arq-${campo}`).files[0];
+  $(`caixa-${campo}`).classList.toggle("com-arquivo", !!arquivo);
+  const nome = $(`nome-${campo}`);
+  nome.hidden = !arquivo;
+  nome.textContent = arquivo ? `✔ ${arquivo.name}` : "";
+}
+
+function atualizarBotoes() {
+  const pronto = !!(downloads && estado.balancete);
+  $("baixar-xlsx").disabled = !pronto;
+  $("baixar-csv").disabled = !pronto;
+}
+
+async function salvar(filename, data, botao) {
+  if (!downloads) return;
+  botao.disabled = true;
+  try {
+    await downloads.save({ filename, data });
+  } catch (e) {
+    if (e?.code === "unavailable" || e?.code === "not_granted") { $("nota-download").hidden = false; downloads = null; }
+    else if (e?.code !== "declined") mostrarMensagem("erro", "Não foi possível baixar o arquivo.", [e?.message ?? String(e)]);
+  } finally {
+    atualizarBotoes();
+    if (botao.dataset.modelo) botao.disabled = !downloads;
+  }
+}
+
+function nomeArquivo(ext) {
+  const b = estado.balancete;
+  return `balancete_${b.ano}-${doisDigitos(b.mes)}.${ext}`;
+}
+
+$("form").addEventListener("submit", carregarArquivos);
+$("usar-exemplo").addEventListener("click", () => { mostrarMensagem(); carregarExemplo(); });
+for (const campo of ["plano", "lancamentos", "saldos"]) $(`arq-${campo}`).addEventListener("change", () => atualizarCaixa(campo));
+$("mes").addEventListener("change", calcularEExibir);
+$("zeradas").addEventListener("change", calcularEExibir);
+$("empresa").addEventListener("input", () => {
+  if (estado.balancete) $("titulo-relatorio").textContent = tituloDe(estado.balancete, $("empresa").value.trim());
+});
+$("baixar-xlsx").addEventListener("click", async (ev) => {
+  if (!estado.balancete) return;
+  const botao = ev.currentTarget;
+  await salvar(nomeArquivo("xlsx"), await gerarExcel(estado.balancete, $("empresa").value.trim()), botao);
+});
+$("baixar-csv").addEventListener("click", (ev) => {
+  if (estado.balancete) salvar(nomeArquivo("csv"), gerarCSV(estado.balancete), ev.currentTarget);
+});
+const NOMES_MODELO = { plano: "plano_de_contas.csv", lancamentos: "lancamentos.csv", saldos: "saldos_iniciais.csv" };
+for (const botao of document.querySelectorAll("[data-modelo]")) {
+  botao.disabled = true;
+  botao.addEventListener("click", () => salvar(NOMES_MODELO[botao.dataset.modelo], "﻿" + EXEMPLO[botao.dataset.modelo], botao));
+}
+
+carregarExemplo();
+
+(async () => {
+  try { downloads = await window.claude?.use?.("downloads"); } catch { downloads = null; }
+  if (!downloads) $("nota-download").hidden = false;
+  for (const botao of document.querySelectorAll("[data-modelo]")) botao.disabled = !downloads;
+  atualizarBotoes();
+})();
+</script>
