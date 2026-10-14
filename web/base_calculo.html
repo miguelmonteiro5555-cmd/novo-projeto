@@ -135,6 +135,14 @@
   .conferencia strong { font-family: var(--f-num); font-weight: 500; white-space: nowrap; }
   .dica { font-size: 13px; color: var(--aviso); background: var(--aviso-fundo); border-radius: 6px; padding: 6px 10px; }
   .resumo td.n, .resumo th { white-space: nowrap; }
+  .form-parecer { display: grid; gap: 10px; }
+  .form-parecer label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
+  .form-parecer label small { font-weight: 400; color: var(--suave); }
+  .form-parecer input, .form-parecer textarea {
+    font: inherit; font-size: 14px; font-weight: 400; color: var(--tinta); background: var(--campo);
+    border: 1px solid var(--linha); border-radius: 6px; padding: 7px 9px; width: 100%;
+  }
+  .form-parecer textarea { min-height: 64px; resize: vertical; }
   @media (prefers-reduced-motion: no-preference) { button { transition: filter .15s; } button:hover:not(:disabled) { filter: brightness(1.08); } }
 </style>
 
@@ -174,10 +182,13 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 "use strict";
 
 const DADOS_INICIAIS = /*DADOS*/null/*FIM*/;
+// Modelo do parecer (.docx em base64), embutido ao gerar o aplicativo.
+const MODELO_PARECER = /*MODELO_PARECER*/null/*FIM*/;
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const NOMES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const CAMPOS = {
@@ -205,14 +216,15 @@ const CHAVE = "base-calculo-femta-v1";
 /* ---------- Estado (valores em centavos) ---------- */
 
 function vazio() { return Object.fromEntries(MESES.map((m) => [m, {}])); }
-let estado = { meses: vazio(), aba: "jan" };
+const LEI_PADRAO = "Lei Orçamentária n° 3.838, de 16 de junho de 2025";
+let estado = { meses: vazio(), aba: "jan", parecer: { lei: LEI_PADRAO, meses: {} } };
 
 function v(mes, campo) { return estado.meses[mes][campo] ?? 0; }
 
 function salvarLocal() {
   try {
     localStorage.setItem(CHAVE, JSON.stringify({
-      meses: estado.meses, entidade: $("entidade").value, ano: $("ano").value, aba: estado.aba,
+      meses: estado.meses, entidade: $("entidade").value, ano: $("ano").value, aba: estado.aba, parecer: estado.parecer,
     }));
   } catch { /* armazenamento indisponível */ }
 }
@@ -227,6 +239,7 @@ function carregarLocal() {
     if (dados.entidade != null) $("entidade").value = dados.entidade;
     if (dados.ano) $("ano").value = dados.ano;
     if (MESES.includes(dados.aba) || dados.aba === "resumo") estado.aba = dados.aba;
+    if (dados.parecer?.meses) estado.parecer = { lei: dados.parecer.lei || LEI_PADRAO, meses: dados.parecer.meses };
     return true;
   } catch { return false; }
 }
@@ -445,7 +458,7 @@ function vistaMes(m, r) {
       el("div", {}, el("h2", { text: `${NOMES[i]}/${$("ano").value}` }), selo(r[m].situacao)), copiar),
     el("div", { class: "quadros" },
       el("div", { class: "coluna" }, quadroReceita(m, r), quadroDespesa(m, r)),
-      el("div", { class: "coluna" }, quadroFinanceiro(m, r), ...painelResultado(m, r))),
+      el("div", { class: "coluna" }, quadroFinanceiro(m, r), ...painelResultado(m, r), painelParecer(m, r))),
   ];
 }
 
@@ -754,6 +767,346 @@ function resumoAnual(livro, ano, put, ESCURO, CLARO, centro) {
   financeiro(64, s2, "DESPESA", "DISPÊNDIOS", dispendios);
 }
 
+/* ---------- Parecer mensal (Word) ---------- */
+
+const UNIDADES = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez", "onze", "doze",
+  "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"];
+const DEZENAS = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"];
+const CENTENAS = ["", "cento", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos",
+  "oitocentos", "novecentos"];
+const ESCALAS = [null, ["mil", "mil"], ["milhão", "milhões"], ["bilhão", "bilhões"], ["trilhão", "trilhões"]];
+
+function ate999(n) {
+  if (n === 100) return "cem";
+  const partes = [];
+  if (n >= 100) partes.push(CENTENAS[Math.floor(n / 100)]);
+  const r = n % 100;
+  if (r) partes.push(r < 20 ? UNIDADES[r] : DEZENAS[Math.floor(r / 10)] + (r % 10 ? ` e ${UNIDADES[r % 10]}` : ""));
+  return partes.join(" e ");
+}
+
+function inteiroPorExtenso(n) {
+  if (n === 0) return "zero";
+  const grupos = [];
+  for (; n > 0; n = Math.floor(n / 1000)) grupos.push(n % 1000);
+  const partes = [];
+  for (let i = grupos.length - 1; i >= 0; i--) {
+    const g = grupos[i];
+    if (!g) continue;
+    const texto = i === 0 ? ate999(g) : i === 1 ? (g === 1 ? "mil" : `${ate999(g)} mil`)
+      : `${ate999(g)} ${ESCALAS[i][g === 1 ? 0 : 1]}`;
+    partes.push({ texto, g });
+  }
+  // "e" antes de grupo menor que 100 ou centena redonda; vírgula nos demais.
+  return partes.map((p, k) => (k === 0 ? "" : (p.g < 100 || p.g % 100 === 0 ? " e " : ", ")) + p.texto).join("");
+}
+
+function reaisPorExtenso(centavos) {
+  const negativo = centavos < 0;
+  const abs = Math.abs(centavos);
+  const inteiro = Math.floor(abs / 100), cent = abs % 100;
+  const partes = [];
+  if (inteiro) {
+    const de = inteiro >= 1e6 && inteiro % 1e6 === 0 ? " de" : "";
+    partes.push(`${inteiroPorExtenso(inteiro)}${de} ${inteiro === 1 ? "real" : "reais"}`);
+  }
+  if (cent) partes.push(`${inteiroPorExtenso(cent)} ${cent === 1 ? "centavo" : "centavos"}`);
+  const texto = partes.join(" e ") || "zero real";
+  return negativo ? `menos ${texto}` : texto;
+}
+
+const rs = (c) => (c < 0 ? `- R$ ${fmt(-c)}` : `R$ ${fmt(c)}`);
+const rsExtenso = (c) => `${rs(c)} (${reaisPorExtenso(c)})`;
+const pctTexto = (a, b) => (b ? PCT.format(a / b) : "0,00%");
+const NUM_MESES = ["um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez", "onze", "doze"];
+
+function dadosParecer(m) {
+  estado.parecer.meses[m] ??= {};
+  return estado.parecer.meses[m];
+}
+
+function dataPorExtenso(iso) {
+  const [a, mm, d] = (iso || "").split("-").map(Number);
+  if (!a || !mm || !d) return "";
+  return `ao dia ${d} de ${NOMES[mm - 1].toLowerCase()} de ${a}`;
+}
+
+function hojeIso() {
+  const h = new Date();
+  return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-${String(h.getDate()).padStart(2, "0")}`;
+}
+
+/** Textos do parecer: listas de [texto, negrito]. */
+function textosParecer(m, r) {
+  const i = MESES.indexOf(m);
+  const x = r[m];
+  const ano = $("ano").value;
+  const mes = NOMES[i].toLowerCase();
+  const mesAno = `${mes} de ${ano}`;
+  const p = dadosParecer(m);
+  const prev = v(m, "receita_prevista"), atu = v(m, "receita_atualizada"), real = v(m, "receita_realizada");
+  const correntes = v(m, "correntes_execucao"), capital = v(m, "capital_execucao");
+  const anulExec = v(m, "anulacoes_execucao");
+  const supl = v(m, "suplementacao_autorizada"), anul = v(m, "anulacoes_autorizada");
+  const t = {};
+
+  const composicao = (p.composicao || "").trim().replace(/[.,;]+$/, "");
+  t.TXT_Q1 = [
+    ["No quadro 1, verifica-se que a receita orçamentária arrecadada no mês foi ", false],
+    [rsExtenso(real), true],
+    [`${composicao ? `, composta por ${composicao},` : ","} que representa `, false],
+    [pctTexto(real, prev), true], [" da receita prevista para o presente exercício financeiro e ", false],
+    [pctTexto(real, atu), true], [" da receita atualizada. O total acumulado ", false],
+    [rsExtenso(x.recAcum), true], [" que representa ", false],
+    [pctTexto(x.recAcum, prev), true], [" do valor previsto e ", false],
+    [pctTexto(x.recAcum, atu), true], [" do valor atualizado.", false],
+  ];
+
+  let execucao;
+  if (!x.despTotal) execucao = [["No quadro 2, constata-se que no período analisado não houve execução de despesas.", false]];
+  else {
+    const detalhe = !capital ? ", integralmente em despesas correntes, não tendo sido registrado empenho em despesas de capital no mês."
+      : !correntes ? ", integralmente em despesas de capital, não tendo sido registrado empenho em despesas correntes no mês."
+        : `, sendo ${rs(correntes)} em despesas correntes e ${rs(capital)} em despesas de capital.`;
+    execucao = [["No quadro 2, constata-se que no período analisado houve execução das despesas no valor de ", false],
+      [rsExtenso(x.despTotal), true], [detalhe, false]];
+  }
+  const anulacoes = anulExec
+    ? ` Foram ainda anulados ${rsExtenso(anulExec)} de empenhos emitidos em meses anteriores, de modo que o valor líquido considerado como despesa orçamentária no Balanço Financeiro do período foi de ${rs(x.despOrc)}.`
+    : "";
+  t.TXT_Q2 = [...execucao, [`${anulacoes} Sendo assim, o valor acumulado até o período foi de `, false],
+    [rsExtenso(x.despAcum), true],
+    [`, correspondente a ${pctTexto(x.despAcum, x.dotAcumIni)} da dotação. A dotação atualizada para o período em análise foi estabelecida no valor de `, false],
+    [rsExtenso(x.dotAcumAut), true], [".", false]];
+
+  const inicioDot = "Essa dotação contempla não apenas o montante inicialmente previsto no orçamento, mas também considera as alterações realizadas ao longo do período.";
+  let dot;
+  if (!supl && !anul) dot = ` Até o mês de ${mes}, não houve suplementações nem anulações de dotação, razão pela qual a dotação autorizada permanece idêntica à inicialmente fixada.`;
+  else if (supl === anul) dot = ` Até o mês de ${mes}, as suplementações acumuladas somam ${rs(supl)}, integralmente compensadas por anulações de dotação de igual valor, razão pela qual a dotação autorizada permanece idêntica à inicialmente fixada.`;
+  else {
+    const dif = supl - anul;
+    dot = ` Até o mês de ${mes}, as suplementações acumuladas somam ${rs(supl)} e as anulações de dotação somam ${rs(anul)}, o que resultou em ${dif > 0 ? "acréscimo líquido" : "redução líquida"} de ${rs(Math.abs(dif))} na dotação autorizada em relação à inicialmente fixada.`;
+  }
+  t.TXT_DOTACAO = [[inicioDot + dot, false]];
+
+  const resOrc = x.diferenca;
+  const situacaoOrc = resOrc < 0 ? "representando um déficit no período, visto que a execução da despesa foi superior à realização da receita."
+    : resOrc > 0 ? "representando um superávit no período, visto que a realização da receita foi superior à execução da despesa."
+      : "representando equilíbrio no período, visto que a realização da receita foi igual à execução da despesa.";
+  t.TXT_RESULTADO_ORC = [["O Resultado da Execução Orçamentária no mês foi de ", false], [rsExtenso(resOrc), true],
+    [`, obtido pela diferença entre a receita realizada no mês, de ${rs(real)}, e a despesa empenhada no mês, de ${rs(x.despTotal)}, ${situacaoOrc}`, false]];
+
+  t.TXT_RESUMO_BF = [[`Resumidamente, o Balanço Financeiro relativo ao período de ${mesAno} apresenta-se da seguinte forma:`, false]];
+
+  const efeito = x.rfp < 0 ? "redução" : x.rfp > 0 ? "aumento" : "manutenção";
+  t.TXT_RFP = [["O Resultado Financeiro do Período (RFP) foi de ", false], [rsExtenso(x.rfp), true],
+    [` obtido pela diferença entre a soma das receitas orçamentárias e extraorçamentárias (RO+RE), de ${rs(x.roRe)}, e a soma das despesas orçamentárias e extraorçamentárias (DO+DE), de ${rs(x.doDe)}, o que representou ${efeito} do saldo das disponibilidades ao final do mês de ${mesAno}, conforme demonstrado no quadro 4 abaixo:`, false]];
+
+  const negativo = x.rfp < 0;
+  t.TXT_AVALIACAO = [[negativo
+    ? "Um bom controle orçamentário e financeiro é fundamental para garantir a sustentabilidade e eficiência das finanças públicas. O resultado negativo observado no resultado financeiro do período deve ser observado, no intuito de propor melhorias nos serviços oferecidos à população entre outras ações que contribuam para equilíbrio financeiro e o atendimento das necessidades da instituição."
+    : "Um bom controle orçamentário e financeiro é fundamental para garantir a sustentabilidade e eficiência das finanças públicas. O resultado positivo observado no resultado financeiro do período deve ser acompanhado, no intuito de manter o equilíbrio financeiro e o atendimento das necessidades da instituição.", false]];
+
+  const anterior = i ? `verificado ao final de ${NOMES[i - 1].toLowerCase()} de ${ano}` : "verificado ao final do exercício anterior";
+  const decorridos = i ? `Decorridos ${NUM_MESES[i]} meses do exercício` : "Decorrido um mês do exercício";
+  t.TXT_CONCLUSAO = [[`Em conclusão, o resultado financeiro ${negativo ? "negativo" : "positivo"} de `, false], [rsExtenso(x.rfp), true],
+    [` apurado em ${mesAno} ${negativo ? "reduziu" : x.rfp > 0 ? "elevou" : "manteve"} o saldo em espécie do Fundo de ${rs(x.saldoAnterior)}, ${anterior}, para `, false],
+    [rsExtenso(x.saldoFinal), true],
+    [`, montante que se transfere para o período seguinte. ${decorridos}, o Fundo acumula arrecadação de ${rs(x.recAcum)}, equivalente a ${pctTexto(x.recAcum, prev)} da receita prevista, e empenhos de ${rs(x.despAcum)}, correspondentes a ${pctTexto(x.despAcum, x.dotAcumAut)} da dotação autorizada.`, false]];
+
+  t.TXT_INFORMACAO = [[negativo
+    ? `Essa informação é essencial para gestão financeira e orçamentária, pois mostra que as receitas do período foram insuficientes para cobrir as despesas realizadas, ainda que o Fundo mantenha disponibilidade financeira de ${rs(x.saldoFinal)} ao final do mês. Entretanto, é importante destacar que segundo o MCASP um resultado financeiro negativo é indicador de desequilíbrio financeiro.`
+    : `Essa informação é essencial para gestão financeira e orçamentária, pois mostra que as receitas do período foram suficientes para cobrir as despesas realizadas, e o Fundo mantém disponibilidade financeira de ${rs(x.saldoFinal)} ao final do mês. Ainda assim, é importante destacar que o resultado deve ser acompanhado em conjunto com as demais variáveis orçamentárias e extraorçamentárias.`, false]];
+
+  const simples = {
+    NUMERO: (p.numero || "").trim() || "____/DCG-SMTFC",
+    MES_ANO: mesAno,
+    ANO: ano,
+    LEI: (estado.parecer.lei || LEI_PADRAO).trim().replace(/,$/, ""),
+    VALOR_LOA: rsExtenso(prev),
+    DATA: dataPorExtenso(p.data || hojeIso()),
+  };
+  return { paragrafos: t, simples };
+}
+
+/* XML do Word */
+
+const escXml = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+function runsXml(rPr, segmentos) {
+  const base = rPr.replace(/<w:b\/>|<w:bCs\/>/g, "");
+  const negrito = /<w:rFonts[^>]*\/>/.test(base)
+    ? base.replace(/(<w:rFonts[^>]*\/>)/, "$1<w:b/><w:bCs/>")
+    : base.replace("<w:rPr>", "<w:rPr><w:b/><w:bCs/>");
+  return segmentos.map(([texto, b]) => `<w:r>${b ? negrito : base}<w:t xml:space="preserve">${escXml(texto)}</w:t></w:r>`).join("");
+}
+
+const CINZA_ESCURO = "A6A6A6", CINZA_CLARO = "D9D9D9";
+
+function rPrTabela(negrito, cor) {
+  return `<w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>${negrito ? "<w:b/><w:bCs/>" : ""}${cor ? `<w:color w:val="${cor}"/>` : ""}<w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr>`;
+}
+
+/** Célula: { texto, larg, alin, negrito, fundo, span, moeda (centavos), cor } */
+function celulaXml(c) {
+  const larg = c.larg;
+  const tcPr = `<w:tcPr><w:tcW w:w="${larg}" w:type="dxa"/>${c.span > 1 ? `<w:gridSpan w:val="${c.span}"/>` : ""}${c.fundo ? `<w:shd w:val="clear" w:color="auto" w:fill="${c.fundo}"/>` : ""}<w:vAlign w:val="center"/></w:tcPr>`;
+  const rpr = rPrTabela(c.negrito, c.cor);
+  let pPr, runs;
+  if (c.moeda !== undefined) {
+    pPr = `<w:pPr><w:tabs><w:tab w:val="right" w:pos="${larg - 110}"/></w:tabs><w:spacing w:before="20" w:after="20" w:line="240" w:lineRule="auto"/></w:pPr>`;
+    const valor = c.moeda ? (c.moeda < 0 ? `-${fmt(-c.moeda)}` : fmt(c.moeda)) : "-";
+    runs = `<w:r>${rpr}<w:t>R$</w:t></w:r><w:r>${rpr}<w:tab/><w:t xml:space="preserve">${valor}</w:t></w:r>`;
+  } else {
+    pPr = `<w:pPr><w:spacing w:before="20" w:after="20" w:line="240" w:lineRule="auto"/><w:jc w:val="${c.alin || "left"}"/></w:pPr>`;
+    runs = c.texto ? `<w:r>${rpr}<w:t xml:space="preserve">${escXml(c.texto)}</w:t></w:r>` : "";
+  }
+  return `<w:tc>${tcPr}<w:p>${pPr}${runs}</w:p></w:tc>`;
+}
+
+function tabelaXml(larguras, linhas) {
+  const total = larguras.reduce((a, b) => a + b, 0);
+  const borda = (n) => `<w:${n} w:val="single" w:sz="4" w:space="0" w:color="000000"/>`;
+  const grid = larguras.map((w) => `<w:gridCol w:w="${w}"/>`).join("");
+  const rows = linhas.map((cels) => {
+    let col = 0;
+    const tcs = cels.map((c) => {
+      const span = c.span || 1;
+      const larg = larguras.slice(col, col + span).reduce((a, b) => a + b, 0);
+      col += span;
+      return celulaXml({ ...c, larg, span });
+    }).join("");
+    return `<w:tr><w:trPr><w:cantSplit/></w:trPr>${tcs}</w:tr>`;
+  }).join("");
+  return `<w:tbl><w:tblPr><w:tblW w:w="${total}" w:type="dxa"/><w:jc w:val="center"/><w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map(borda).join("")}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="50" w:type="dxa"/><w:right w:w="50" w:type="dxa"/></w:tblCellMar><w:tblLook w:val="0000"/></w:tblPr><w:tblGrid>${grid}</w:tblGrid>${rows}</w:tbl><w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:p>`;
+}
+
+function quadrosParecer(m, r) {
+  const x = r[m];
+  const cab = (texto) => ({ texto, alin: "center", negrito: true, fundo: CINZA_ESCURO });
+  const tit = (texto, destaque) => ({ texto, negrito: destaque, fundo: destaque ? CINZA_CLARO : undefined });
+  const din = (c, destaque) => ({ moeda: c, negrito: destaque, fundo: destaque ? CINZA_CLARO : undefined });
+  const pc = (a, b, destaque) => ({ texto: pctTexto(a, b), alin: "center", negrito: destaque, fundo: destaque ? CINZA_CLARO : undefined });
+
+  const prev = v(m, "receita_prevista"), atu = v(m, "receita_atualizada"), real = v(m, "receita_realizada");
+  const linhaRec = (t, pre) => [tit(t), din(v(m, `${pre}_previsto`)), din(v(m, `${pre}_atualizado`)), din(v(m, `${pre}_realizado`)),
+    pc(v(m, `${pre}_realizado`), v(m, `${pre}_previsto`)), pc(v(m, `${pre}_realizado`), v(m, `${pre}_atualizado`))];
+  const q1 = tabelaXml([1750, 1600, 1600, 1600, 977, 977], [
+    ["TÍTULOS", "RECEITA PREVISTA", "RECEITA ATUALIZADA", "REALIZAÇÃO", "% PREVISTO", "% ATUALIZADO"].map(cab),
+    [tit("Receitas Correntes"), din(prev), din(atu), din(real), pc(real, prev), pc(real, atu)],
+    [tit("Total", true), din(prev, true), din(atu, true), din(real, true), pc(real, prev, true), pc(real, atu, true)],
+    linhaRec("Superávit Fin. Exer. Anterior", "superavit"),
+    linhaRec("Excesso de Arrecadação", "excesso"),
+    linhaRec("Saldo do Mês Anterior", "saldo_mes_ant"),
+    [tit("Total Acumulado", true), din(prev, true), din(atu, true), din(x.recAcum, true), pc(x.recAcum, prev, true), pc(x.recAcum, atu, true)],
+  ]);
+
+  const linhaDesp = (t, pre) => [tit(t), din(v(m, `${pre}_inicial`)), din(v(m, `${pre}_autorizada`)), din(v(m, `${pre}_execucao`)),
+    pc(v(m, `${pre}_execucao`), v(m, `${pre}_autorizada`))];
+  const q2 = tabelaXml([2300, 1600, 1600, 1600, 1404], [
+    ["TÍTULOS", "DOTAÇÃO INICIAL", "DOTAÇÃO AUTORIZADA", "EXECUÇÃO", "PERCENTUAL"].map(cab),
+    linhaDesp("Despesas Correntes", "correntes"),
+    linhaDesp("Despesas de Capital e Amortização", "capital"),
+    [tit("Total", true), din(x.dotIni, true), din(x.dotAut, true), din(x.despTotal, true), pc(x.despTotal, x.dotAut, true)],
+    linhaDesp("Reserva de Contingência", "reserva"),
+    linhaDesp("Suplementação", "suplementacao"),
+    linhaDesp("Dotação Especial", "especial"),
+    linhaDesp("Anulações", "anulacoes"),
+    [tit("Total Acumulado", true), din(x.dotAcumIni, true), din(x.dotAcumAut, true), din(x.despAcum, true), pc(x.despAcum, x.dotAcumIni, true)],
+  ]);
+
+  const primeiro = m === "jan";
+  const fin = [
+    ["Receita Orçamentária", real, "Despesa Orçamentária", x.despOrc],
+    ["Transf. Recebida Orçamentária", v(m, "transf_recebida_orcamentaria"), "Transf. Concedida Orçamentária", v(m, "transf_concedida_orcamentaria")],
+    ["Receita Extraorçamentária", v(m, "receita_extraorcamentaria"), "Despesa Extraorçamentária", v(m, "despesa_extraorcamentaria")],
+    ["Transf. Recebida Extraorçamentária", v(m, "transf_recebida_extraorcamentaria"), "Transf. Concedida Extraorçamentária", v(m, "transf_concedida_extraorcamentaria")],
+    [primeiro ? "Saldo do Exercício Anterior" : "Saldo do Mês Anterior", x.saldoAnterior, "Saldo para o Exercício Seguinte", x.saldoFinal],
+  ];
+  const q3 = tabelaXml([2802, 1450, 2802, 1450], [
+    [{ ...cab("RECEITA"), span: 2 }, { ...cab("DESPESA"), span: 2 }],
+    [{ texto: "INGRESSOS", alin: "center", negrito: true, fundo: CINZA_CLARO }, din(x.ingressos, true),
+      { texto: "DISPÊNDIOS", alin: "center", negrito: true, fundo: CINZA_CLARO }, din(x.dispendios, true)],
+    ...fin.map(([a, va, b, vb]) => [tit(a), din(va), tit(b), din(vb)]),
+  ]);
+
+  const q4 = tabelaXml([3300, 3300], [
+    [{ ...cab("RFP = (RO + RE) - (DO + DE)"), span: 2 }],
+    [{ texto: rs(x.roRe).replace("R$ ", "R$ "), alin: "center" }, { texto: "(RO + RE)", alin: "center", negrito: true }],
+    [{ texto: rs(x.doDe), alin: "center" }, { texto: "(DO + DE)", alin: "center", negrito: true }],
+    [{ texto: x.rfp < 0 ? `-R$ ${fmt(-x.rfp)}` : rs(x.rfp), alin: "center", negrito: true, fundo: CINZA_CLARO, cor: x.rfp < 0 ? "C00000" : undefined },
+      { texto: "RFP", alin: "center", negrito: true }],
+  ]);
+  return { QUADRO1: q1, QUADRO2: q2, QUADRO3: q3, QUADRO4: q4 };
+}
+
+async function gerarParecer(m) {
+  if (!MODELO_PARECER) throw new Error("O modelo do parecer não está embutido nesta versão do aplicativo.");
+  if (typeof JSZip === "undefined") throw new Error("A biblioteca do Word não carregou. Recarregue a página.");
+  const r = calcular();
+  const zip = await JSZip.loadAsync(MODELO_PARECER, { base64: true });
+  let xml = await zip.file("word/document.xml").async("string");
+  const { paragrafos, simples } = textosParecer(m, r);
+  for (const [nome, segmentos] of Object.entries(paragrafos)) {
+    const re = new RegExp(`<w:r>(<w:rPr>(?:(?!</w:rPr>)[\\s\\S])*</w:rPr>)<w:t xml:space="preserve">\\{\\{${nome}\\}\\}</w:t></w:r>`);
+    if (!re.test(xml)) throw new Error(`Modelo do parecer sem o marcador ${nome}.`);
+    xml = xml.replace(re, (_, rPr) => runsXml(rPr, segmentos));
+  }
+  for (const [nome, tabela] of Object.entries(quadrosParecer(m, r))) {
+    const marcador = `<w:p><w:r><w:t>{{${nome}}}</w:t></w:r></w:p>`;
+    if (!xml.includes(marcador)) throw new Error(`Modelo do parecer sem o marcador ${nome}.`);
+    xml = xml.replace(marcador, () => tabela);
+  }
+  for (const [nome, valor] of Object.entries(simples)) xml = xml.split(`{{${nome}}}`).join(escXml(valor));
+  const restante = xml.match(/\{\{[A-Z_0-9]+\}\}/);
+  if (restante) throw new Error(`Marcador não preenchido no modelo: ${restante[0]}`);
+  zip.file("word/document.xml", xml);
+  return zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", compression: "DEFLATE" });
+}
+
+function painelParecer(m, r) {
+  const p = dadosParecer(m);
+  const i = MESES.indexOf(m);
+  const campo = (rotulo, dica, tag, props, chave, global = false) => {
+    const input = el(tag, { id: `parecer-${chave}`, ...props });
+    input.value = global ? (estado.parecer[chave] ?? "") : (p[chave] ?? "");
+    input.addEventListener("input", () => {
+      if (global) estado.parecer[chave] = input.value; else p[chave] = input.value;
+      salvarLocal();
+    });
+    return el("label", { for: `parecer-${chave}` }, rotulo, dica ? el("small", { text: dica }) : null, input);
+  };
+  if (!p.data) p.data = hojeIso();
+  const botao = el("button", { type: "button", id: "gerar-parecer" }, "Gerar parecer (Word)");
+  botao.disabled = r[m].vazio || !downloads || !MODELO_PARECER;
+  botao.addEventListener("click", async () => {
+    botao.disabled = true;
+    try {
+      const blob = await gerarParecer(m);
+      const numero = (p.numero || "").trim().replace(/[\\/:*?"<>|]+/g, "-");
+      const nome = `Parecer${numero ? ` ${numero}` : ""} - FEMTA ${NOMES[i]} ${$("ano").value}.docx`;
+      await downloads.save({ filename: nome, data: blob });
+      mensagem(r[m].situacao === "verificar" ? "erro" : "info", r[m].situacao === "verificar"
+        ? `Parecer de ${NOMES[i].toLowerCase()} gerado, mas as conferências do mês não fecharam. Revise os valores antes de usar o parecer.`
+        : `Parecer de ${NOMES[i].toLowerCase()} gerado. Revise o texto no Word antes de assinar.`);
+    } catch (e) {
+      if (e?.code === "unavailable" || e?.code === "not_granted") mensagem("erro", "O download não está disponível nesta visualização.");
+      else if (e?.code !== "declined") mensagem("erro", `Não foi possível gerar o parecer: ${e?.message ?? e}`);
+    } finally {
+      botao.disabled = r[m].vazio || !downloads || !MODELO_PARECER;
+    }
+  });
+  return el("section", { class: "quadro" }, el("h3", { text: "Parecer do mês" }),
+    el("div", { class: "form-parecer" },
+      campo("Número do parecer", "ex.: 110-2026/DCG-SMTFC", "input", { type: "text", placeholder: "110-2026/DCG-SMTFC" }, "numero"),
+      campo("Data do parecer", null, "input", { type: "date" }, "data"),
+      campo("Composição da receita do mês", "opcional; entra depois do valor arrecadado", "textarea",
+        { placeholder: "R$ 45.074,25 de remuneração de depósitos bancários e R$ 1.076.055,18 de multas previstas na legislação de trânsito" }, "composicao"),
+      campo("Lei Orçamentária do exercício", "vale para todos os meses", "input", { type: "text" }, "lei", true),
+      el("div", { class: "barra" }, botao),
+      r[m].vazio ? el("p", { class: "nota", text: "Preencha o mês para gerar o parecer." }) : null));
+}
+
 /* ---------- Eventos ---------- */
 
 let downloads = null;
@@ -804,6 +1157,7 @@ $("confirmar-sim").addEventListener("click", () => {
   const saldoDez = v("dez", "saldo_final");
   estado.meses = vazio();
   if (saldoDez) estado.meses.jan.saldo_exercicio_anterior = saldoDez;
+  estado.parecer.meses = {};
   $("ano").value = Number($("ano").value) + 1;
   estado.aba = "jan";
   $("confirmar-novo").hidden = true;

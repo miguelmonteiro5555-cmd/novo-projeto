@@ -70,6 +70,21 @@ Os valores digitados ficam guardados no navegador do computador onde o arquivo
 foi aberto. Para levar para outro computador, baixe a planilha e use
 *Importar planilha* lá.
 
+### Parecer mensal (Word)
+
+Em cada mês, o painel **Parecer do mês** gera o parecer da prestação de contas
+no modelo da DCG-SMTFC (`web/modelos/parecer_femta.docx`, feito a partir do
+Parecer nº 110-2026). O texto fixo do modelo é mantido; o aplicativo preenche:
+
+- número do parecer, mês/ano, Lei Orçamentária e data;
+- os quadros 1 a 4 como tabelas do Word, com os valores da base de cálculo;
+- os valores por extenso e os parágrafos que dependem do resultado
+  (superávit/déficit, aumento/redução do saldo, suplementações e anulações,
+  execução em despesas correntes e de capital).
+
+A composição da receita do mês (por exemplo, rendimentos e multas) é digitada
+no painel, porque não faz parte da base de cálculo.
+
 ## Aplicação web (Flask, local)
 
 ```bash
